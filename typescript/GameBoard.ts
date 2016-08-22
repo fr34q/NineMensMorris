@@ -1,0 +1,361 @@
+/**
+ * Static class implementing the game board and providing most of the game logic and features.
+ */
+class GameBoard
+{
+    /** Array containing all game fields on the board */
+    static gameFields : GameField[];
+    /** Array containing all stones existing */
+    static stones : Array<GameStone[]>;
+    
+    private static _activeStone : GameStone;
+    /** specifies the active stone */
+    static get activeStone() : GameStone {
+        return this._activeStone;
+    }
+    static set activeStone(newStone : GameStone) {
+        // setting a new active stone will reset active property of old active stone
+        if (this._activeStone)
+            this._activeStone.active = false;
+        this._activeStone = newStone;
+        if (newStone)
+            newStone.active = true;
+    }
+
+    // stores last game phase while removing a stone to return there later
+    private static lastGamePhase : number;
+
+    // for draw detection
+    // stores last turn a mill was created
+    private static lastTurnMill : number;
+    // stores how often a specific board configuration was alreade placed
+    // if one set of stone position is detected 3 times game is draw
+    private static hashForDraw : number[];
+
+    /** 
+     * Initializes/Resets the game board for a new game 
+     */
+    static Initialize() : void
+    {
+        this.lastTurnMill = -1;
+        this.hashForDraw = [];
+        
+        // Game board built up from left to right and up to down
+        this.gameFields = [
+            new GameField(0, 0), //  0 - top left
+            new GameField(3, 0), //  1 - top center
+            new GameField(6, 0), //  2 - top right
+            new GameField(1, 1), //  3
+            new GameField(3, 1), //  4
+            new GameField(5, 1), //  5
+            new GameField(2, 2), //  6
+            new GameField(3, 2), //  7
+            new GameField(4, 2), //  8
+            new GameField(0, 3), //  9
+            new GameField(1, 3), // 10
+            new GameField(2, 3), // 11
+            new GameField(4, 3), // 12
+            new GameField(5, 3), // 13
+            new GameField(6, 3), // 14
+            new GameField(2, 4), // 15
+            new GameField(3, 4), // 16
+            new GameField(4, 4), // 17
+            new GameField(1, 5), // 18
+            new GameField(3, 5), // 19
+            new GameField(5, 5), // 20
+            new GameField(0, 6), // 21
+            new GameField(3, 6), // 22
+            new GameField(6, 6), // 23
+        ];
+        // same index means pair -> left and right neighbor (horizontal connections)
+        let nachbarL : number[] = [0, 1, 3, 4, 6, 7,  9, 10, 12, 13, 15, 16, 18, 19, 21, 22];
+        let nachbarR : number[] = [1, 2, 4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 19, 20, 22, 23];
+        for (var i = 0; i < nachbarL.length; i++) {
+            GameBoard.gameFields[nachbarL[i]].neighborRight = GameBoard.gameFields[nachbarR[i]];
+            GameBoard.gameFields[nachbarR[i]].neighborLeft = GameBoard.gameFields[nachbarL[i]];
+        }
+        // same for vertical connections
+        let nachbarT : number[] = [0,  9,  3, 10,  6, 11, 1, 4, 16, 19,  8, 12,  5, 13,  2, 14];
+        let nachbarB : number[] = [9, 21, 10, 18, 11, 15, 4, 7, 19, 22, 12, 17, 13, 20, 14, 23];
+        for (var i = 0; i < nachbarT.length; i++) {
+            GameBoard.gameFields[nachbarT[i]].neighborBottom = GameBoard.gameFields[nachbarB[i]];
+            GameBoard.gameFields[nachbarB[i]].neighborTop = GameBoard.gameFields[nachbarT[i]];
+        }
+
+        // create stones and place them next to the game board
+        this.stones = [new Array<GameStone>(Settings.stoneCountPerPlayer), new Array<GameStone>(Settings.stoneCountPerPlayer)];
+        for (var color of [0,1]) {
+            for (var i = 0; i < Settings.stoneCountPerPlayer; i++) {
+                this.stones[color][i] = new GameStone(color);
+                this.stones[color][i].position = {x: 7-8*color, y: 6/(Settings.stoneCountPerPlayer-1)*i};
+            }
+        }
+        this.activeStone = this.stones[Game.currentPlayer][Settings.stoneCountPerPlayer-1];
+    }
+
+    /** 
+     * Returns all stones of a given color that are placed on the field.
+     * @param {number} stonecolor - Color of the placed stones to return.
+     * @returns {Array<GameStone>} an array with all placed stones of a given color.
+     */
+    static GetStonesOnField(stonecolor : number) : Array<GameStone> {
+        return this.stones[stonecolor].filter(s => s.isPlaced);
+    }
+
+    /** 
+     * Places a stone on a given field.
+     * @param {GameStone} stone - The stone to move.
+     * @param {GameField} field - The field where to move the stone.
+     */
+    private static PlaceStoneAtField(stone : GameStone, field : GameField) : void {
+        if (field.owner != null) {
+            console.error("Cannot place stone on field that is already occupied!");
+            return;
+        }
+        if (stone.field)
+            stone.field.owner = null; // reset owner of old field
+        field.owner = stone;
+        stone.position = field.position;
+        stone.field = field;
+        this.activeStone = stone;
+
+        this.CheckMuehleSwitchPlayer();
+    }
+    /**
+     * Places the active stone at the given field.
+     * @param {GameField} field - The field to move the active stone to.
+     */
+    private static PlaceCurrentStoneAtField(field : GameField) : void {
+        this.PlaceStoneAtField(this.activeStone, field);
+    }
+
+    /**
+     * Moves a stone to a given fields if possible.
+     * @param {GameStone} stone - The stone to move.
+     * @param {GameField} field - The field to move the stone to.
+     * @returns {boolean} if the move was possible and thus performed.
+     */
+    static MoveStoneToField(stone : GameStone, field : GameField) : boolean {
+        if (!field.CanStoneMoveTo(stone))
+            return false;
+        this.PlaceStoneAtField(stone, field);
+        return true;
+    }
+    /**
+     * Move the active stone to a given field if possible.
+     * @param {GameField} field - The field to move the stone to.
+     * @returns {boolean} if the move was possible and thus performed.
+     */
+    static MoveCurrentStoneToField(field : GameField) : boolean {
+        if (!this.activeStone || !field.CanStoneMoveTo(this.activeStone))
+            return false;
+        this.PlaceCurrentStoneAtField(field);
+        return true;
+    }
+
+    /**
+     * Remove the given stone from the board if possible.
+     * @ param {GameStone} stone - The stone to be removed.
+     * @ returns {boolean} if the stone could be removed.
+     */
+    static RemoveStoneFromField(stone: GameStone) : boolean {
+        if(!stone.field || stone.isInClosedMill || Game.phase != 3) {
+            return false; // protected stone
+        }
+        stone.field.owner = null;
+        this.stones[stone.color].splice(this.stones[stone.color].indexOf(stone), 1);
+
+        // Go back to the last game phase before removing a stone
+        Game.phase = this.lastGamePhase;
+        this.SwitchCurrentPlayer();
+        return true;
+    }
+
+    /**
+     * Check if mill exist or game is drawn, and if not then switch players.
+     * @returns {boolean} if a mill existed.
+     */
+    static CheckMuehleSwitchPlayer() : boolean {
+        if (this.activeStone && this.activeStone.isInClosedMill) {
+            // update last turn where mill was closed -> for Remis decision
+            this.lastTurnMill = Game.turn;
+
+            if (Game.phase == 2 && this.stones[1 - Game.currentPlayer].length <= 3) {
+                // mill created and enemy has only 3 stones left -> player wins
+                Game.phase = 4;
+                return true;
+            }
+            // Check if there are any enemy stones that can be removed.
+            // If not no stone can be removed and next player continues.
+            if (this.GetStonesOnField(1 - Game.currentPlayer).some(s => !s.isInClosedMill)) {
+                this.lastGamePhase = Game.phase; // to go back after removal
+                Game.phase = 3; // Remove stone for closed Muehle
+                this.activeStone = null;
+
+                // Check if current player is AI and if so let him move
+                // Need to call this manually here as player is not switching.
+                this.TryAIMove();
+
+                return true;
+            }
+        }
+        // check for game draw
+        if (this.CheckAndUpdateDraw()) {
+            Game.phase = 5;
+            return false;
+        }
+
+        this.SwitchCurrentPlayer();
+        return false;
+    }
+
+    /**
+     * Method to switch active player.
+     */
+    static SwitchCurrentPlayer() : void {
+        // Check if next player can move some stones
+        if (Game.turn >= 17 && !this.GetStonesOnField(1 - Game.currentPlayer).some(s => s.isMoveable)) {
+            // no moves possible anymore
+            Game.phase = 4;
+            return;
+        }
+        // Check if phase has to switch from placing to moving stones
+        if (Game.phase == 1 && Game.turn >= 17) {
+            Game.phase = 2;
+            GameBoard.activeStone = null;
+        }
+        // Switch players, reset active stone and increment turn counter
+        Game.currentPlayer = 1 - Game.currentPlayer;
+        this.activeStone = this.GetUnsettledStone(Game.currentPlayer); // returns null if no unsettled stones
+        Game.turn++;
+
+        // Check if its AIs turn
+        this.TryAIMove();
+    }
+
+    /**
+     * Returns a stone of a given color that is not placed yet.
+     * @param {number} color - Color of the stone to return.
+     * @returns {GameStone} the unsettled stone or null of none present.
+     */
+    static GetUnsettledStone(color : number) : GameStone {
+        var unsettledStones = this.stones[Game.currentPlayer].filter(s => !s.isPlaced);
+        if (unsettledStones.length < 1)
+            return null;
+        return unsettledStones[unsettledStones.length-1];
+    }
+
+    /**
+     * Checks if the current player is AI and if so calls its MakeMove() method.
+     * @returns {boolean} if the AI made a move.
+     */
+    static TryAIMove() : boolean {
+        if (Game.playerAI[Game.currentPlayer])
+            return Game.playerAI[Game.currentPlayer].MakeMove();
+        return false;
+    }
+
+    /**
+     * Checks if game is draw and updates game board placements list.
+     * @returns {boolean} if game is draw.
+     */
+    static CheckAndUpdateDraw() : boolean {
+        // draw if 50 moves without a mill
+        if (Game.turn - this.lastTurnMill >= 50) {
+            return true;
+        }
+
+        // update placement datalist
+        var curState = this.CurrentStateToNumber();
+        // check if this is the third time the same field
+        if (!this.hashForDraw[curState]) {
+            this.hashForDraw[curState] = 1;
+        } else if (++this.hashForDraw[curState] >= 3) {
+            return true;
+        }
+
+        return false; // no draw
+    }
+
+    /**
+     * Returns a unique number representing the stones on the current game board.
+     * Can be used as a hash to identify the current game board placement.
+     * Remark: This is only possible if 64bit number representation is used as 3^24 > 2^32.
+     * @returns {number} the unique number of the current game board.
+     */
+    static CurrentStateToNumber() : number {
+        return this.gameFields.map((f, i) => Math.pow(3, i) * (f.owner ? (f.owner.color == 1 ? 2: 1) : 0)).reduce((a, b) => a + b, 0);
+    }
+
+    /**
+     * Draws the game board and stones on the canvas.
+     */
+    static Paint() : void {
+        var fieldLineWidth = Settings.fieldLineWidthFactor * this.fieldLength;
+        var stoneBorderWidth = Settings.stoneBorderWidthFactor * this.fieldLength;
+
+        var context = canvas.getContext('2d');
+
+        //  Draw connecting lines between game fields
+        for(var field of GameBoard.gameFields) {
+            var realPos = this.GetRealPosition(field.position);
+            // Only have to draw lines to right and bottom neighbors (left and top equivalents exist)
+            if (field.neighborRight) {
+                var realPosNeighbor = this.GetRealPosition(field.neighborRight.position);
+                PaintHelper.DrawLine(realPos.x, realPos.y,
+                    realPosNeighbor.x, realPosNeighbor.y,
+                    fieldLineWidth, Settings.fieldColor);
+            }
+            if (field.neighborBottom) {
+                var realPosNeighbor = this.GetRealPosition(field.neighborBottom.position);
+                PaintHelper.DrawLine(realPos.x, realPos.y,
+                    realPosNeighbor.x, realPosNeighbor.y,
+                    fieldLineWidth, Settings.fieldColor);
+            }
+        }
+        // Draw fields
+        for(var field of GameBoard.gameFields) {
+            field.Paint();
+        }
+        // Draw stones
+        for (var color of [0,1]) {
+            for (var stone of GameBoard.stones[color]) {
+                stone.Paint();
+            }
+        }
+    }
+
+    /**
+     * Returns the real position (in px) of a field position (typically integer values).
+     * The field position is measured in fieldLength starting at (0,0) at the center of the top left field.
+     * @param {Position2} intPos - The position on the game board.
+     * @returns {Position2} (in px) the position on the canvas.
+     */
+    static GetRealPosition(intPos : Position2) : Position2 {
+        var fieldLength = this.fieldLength;
+        var offsetX = (canvas.width - fieldLength * 7) / 2;
+        var offsetY = (canvas.height - fieldLength * 7) / 2;
+        
+        return {x: offsetX + (intPos.x + 0.5) * fieldLength, 
+                y: offsetY + (intPos.y + 0.5) * fieldLength};
+    }
+    /**
+     * Inverse function of GetRealPosition().
+     * @param {Position2} realPos - (in px) The position on the canvas.
+     * @returns {Position2} the position on the game board in whole numbers.
+     */
+    static getFieldPosition(realPos : Position2) : Position2 {
+        var fieldLength = this.fieldLength;
+        var offsetX = (canvas.width - fieldLength * 7) / 2;
+        var offsetY = (canvas.height - fieldLength * 7) / 2;
+        
+        return {x: Math.floor((realPos.x - offsetX) / fieldLength), 
+                y: Math.floor((realPos.y - offsetX) / fieldLength)};
+    }
+
+    /** The length of a game field. Many settings/figures are measured in this unit. */
+    static get fieldLength() : number {
+        // 9/7 as we need 9 fields horizontal including two columns for stones placed outside the field.
+        return Math.min(canvas.height / 7.0, canvas.width / 9.0);
+    }
+}

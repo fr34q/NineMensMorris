@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="initial-scale=1"/>
+  <title>Nine Men's Morris (by fr34q)</title>
+  <link type="text/css" rel="stylesheet" href="mill.css" />
+  <script src="mill.js"></script>
+</head>
+<body onload="onLoad();">
+<header>
+    <table><tr><td>Nine Men's Morris</td>
+    <td><button onclick="Menu.ReturnToMenu();">To Menu</button></td>
+    </tr></table>
+</header>
+<div id="main"></div>
+<div id="gameMenu" width="500" height="400">
+    <table>
+        <tr><td colspan="2"> 
+            <button onclick="Menu.StartGame();">Start New Game</button> 
+        </td></tr>
+        <tr><td>
+            <label class="switch" tabindex="0">
+                <input type="checkbox" id="whiteAI" onchange="Menu.ReadSettings();">
+                <div class="slider"></div>
+            </label>
+        </td>
+        <td>    
+            White AI
+        </td></tr>
+        <tr><td>
+            <label class="switch" tabindex="0">
+                <input type="checkbox" id="blackAI" onchange="Menu.ReadSettings();">
+                <div class="slider"></div>
+            </label>
+        </td>
+        <td>    
+            Black AI
+        </td></tr>
+        <tr><td>
+            <input type="number" id="AItime" style="width:11.765vmin;" min="0" max="9999" value="500" onchange="Menu.ReadSettings();"> <!--80px-->
+        </td>
+        <td>    
+            ms AI Time
+        </td></tr>
+    </table>
+</div>
+<canvas id="myCanvas" width="500" height="400"></canvas>
+<footer>
+    <p>© 2016 by fr34q</p>
+</footer>
+</body>
+</html>
