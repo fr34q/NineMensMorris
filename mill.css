@@ -13,7 +13,7 @@ body {
     margin:0;
     padding:0;
     overflow:hidden;
-    background: url(pictures/carpet.jpg);
+    background: url(pictures/texture2.jpg);
     background-size: cover;
     background-position: center;
 }
@@ -85,8 +85,7 @@ header button:active {
     background: url(pictures/wood.jpg);
     background-size: cover;
     display: none;
-    top: 8vmin;
-    margin: 5px auto;
+    margin: 0;
     border-radius: 4.412vmin;
     box-shadow: 2.353vmin 1.471vmin 1.471vmin rgba(0,0,0,0.8);
 
@@ -95,7 +94,7 @@ header button:active {
     left: 50%;
     transform: translate(-50%,-50%);
 
-    width: 95vmin;
+    width: 90vmin;
     height: 76vmin;
     margin: 0;
     padding: 0;
@@ -103,7 +102,7 @@ header button:active {
 #gameMenu {
     background: url(pictures/wood.jpg);
     background-size: cover;
-    width: 95vmin;
+    width: 90vmin;
     height: 76vmin;
     padding: 0;
     margin: 0;
