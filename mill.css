@@ -127,6 +127,7 @@ header button:active {
 }
 
 #gameMenu table {
+    width: -moz-max-content; /* otherwise text was wrapped inside Button & Labels in FF */
     position:absolute;
     top: 50%;
     left: 50%;
@@ -178,6 +179,7 @@ header button:active {
     font-size: 5vmin; /* 34px */
     text-transform: uppercase;
     text-align: center;
+    -moz-appearance:textfield;
 }
 #gameMenu input[type="number"]:hover {
     background-color: rgba(238, 154, 77, 0.3);
