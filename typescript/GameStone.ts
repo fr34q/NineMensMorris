@@ -61,7 +61,7 @@ class GameStone
      * can the stone be moved
      */
     get moveable() : boolean {
-        return this._active;
+        return this._moveable;
     }
     set moveable(newMoveable : boolean) {
         if (newMoveable) {
@@ -76,7 +76,7 @@ class GameStone
      * can the stone be removed
      */
     get removeable() : boolean {
-        return this._active;
+        return this._removeable;
     }
     set removeable(newRemoveable : boolean) {
         if (newRemoveable) {
@@ -124,6 +124,15 @@ class GameStone
         this._element = document.createElement('div');
         this.position = position; // after creating the div element we can set the position
         this._element.setAttribute('class', color==1 ? 'stoneWhite' : 'stoneBlack');
+        if (Game.enemyAIRandomSleepTime <= 200) {
+            // instant transition moving stones
+            this._element.classList.add("stoneMoveInstant");
+            
+        } else if (Game.enemyAIRandomSleepTime <= 400) {
+            // fast transition
+            this._element.classList.add("stoneMoveFast");
+        }
+
         // set random offset so all stones look different
         this._element.style.backgroundPosition = Math.random()*8 + 'vmin, ' + Math.random()*8 + 'vmin';
         gameBoard.appendChild(this._element);
@@ -156,5 +165,11 @@ class GameStone
             return true;
         }
         return false;
+    }
+
+    Remove() : void {
+        if (this.field) this.field.owner = null;
+        this.field = null;
+        this.element.remove();
     }
 }

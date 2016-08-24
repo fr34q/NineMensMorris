@@ -17,7 +17,7 @@ class EnemyAIRandom implements EnemyAI {
 
         // Wait the given time before executing actual move calculation
         var currAI = this;
-        setTimeout(function() { currAI.MakeMoveIntern(); }, Settings.enemyAIRandomSleepTime);
+        setTimeout(function() { currAI.MakeMoveIntern(); }, Game.enemyAIRandomSleepTime);
     }
 
     MakeMoveIntern() : boolean {

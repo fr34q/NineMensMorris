@@ -2,19 +2,25 @@
  * Static class providing the current game state and general functions to control the game.
  */
 class Game {
-    static phase : number; // current game state
-    static turn : number; // game turn (removing stones not counting)
+    /** Curent game phase */
+    static phase : number;
+    /** Game turn (removing stones not counting) */
+    static turn : number;
+    /** Current player */
     static currentPlayer : number;
-    static playerAI : Array<EnemyAI> = [null, null]; // set if a player is played by computer
-
+    /** Set if a player is played by computer */
+    static playerAI : Array<EnemyAI> = [null, null];
+    /** How long AI will sleep before deciding its next move */
+    static enemyAIRandomSleepTime = 500; // ms
+    
     /**
      * Reset and start new game.
      */
     static Start() : void {
         Game.Reset();
         Game.phase = 1;
-        PaintHelper.Clear();
-        GameBoard.Paint();
+
+        GameBoard.UpdateProperties();
         GameBoard.TryAIMove();
     }
     
@@ -35,42 +41,21 @@ class Game {
     }
 
     /**
-     * Function that is called regularly to paint on canvas etc.
+     * Triggers the winner screen after a game.
      */
-    static Loop() : void {
-        // Updating canvas dimensions
-        Game.ResizeScreen();
-                
-        switch (Game.phase) {
-            case 0: // Menu
-                break;
-            case 1: // Placing stones
-            case 2: // Moving stones
-            case 3: // Removing stones
-                PaintHelper.Clear();
-                GameBoard.Paint();
-                break;
-            case 4: // Winner Screen
-            case 5: // Draw Screen
-                var showText = "Game is drawn!";
-                if (Game.phase == 4) showText = (Game.currentPlayer == 1 ? "White" : "Black") + " wins!";
-
-                PaintHelper.Clear();
-                GameBoard.Paint();
-                PaintHelper.FillRectangle(0, 0, canvas.width, canvas.height, 'rgba(225,225,225,0.85)');
-                PaintHelper.DrawText(3, 3, showText, 
-                        'large', 'black', 'center');
-                PaintHelper.DrawText(3, 4, '(Click anywhere to go to menu.)', 
-                        'normal', 'black', 'center');
-                break;
-        }
+    static ShowWinnerScreen() : void {
+        Game.phase = 4;
+        GameBoard.UpdateProperties();
+        winnerScreenText.innerText = (Game.currentPlayer == 1 ? "White" : "Black") + " wins!";
+        winnerScreen.style.display = 'table';
     }
-
     /**
-     * Updating canvas HTML dimensions to fit with the CSS values necessary for displaying the canvas correctly.
+     * Triggers the draw screen after a game.
      */
-    static ResizeScreen() : void {
-        canvas.height = canvas.scrollHeight;
-        canvas.width = canvas.scrollWidth;
+    static ShowDrawScreen() : void {
+        Game.phase = 5;
+        GameBoard.UpdateProperties();
+        winnerScreenText.innerText = "Game is drawn!";
+        winnerScreen.style.display = 'table';
     }
 }

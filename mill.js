@@ -18,7 +18,7 @@ var EnemyAIRandom = (function () {
         }
         // Wait the given time before executing actual move calculation
         var currAI = this;
-        setTimeout(function () { currAI.MakeMoveIntern(); }, Settings.enemyAIRandomSleepTime);
+        setTimeout(function () { currAI.MakeMoveIntern(); }, Game.enemyAIRandomSleepTime);
     };
     EnemyAIRandom.prototype.MakeMoveIntern = function () {
         switch (Game.phase) {
@@ -312,8 +312,7 @@ var Game = (function () {
     Game.Start = function () {
         Game.Reset();
         Game.phase = 1;
-        PaintHelper.Clear();
-        GameBoard.Paint();
+        GameBoard.UpdateProperties();
         GameBoard.TryAIMove();
     };
     /**
@@ -331,41 +330,27 @@ var Game = (function () {
         GameBoard.Initialize();
     };
     /**
-     * Function that is called regularly to paint on canvas etc.
+     * Triggers the winner screen after a game.
      */
-    Game.Loop = function () {
-        // Updating canvas dimensions
-        Game.ResizeScreen();
-        switch (Game.phase) {
-            case 0:
-                break;
-            case 1: // Placing stones
-            case 2: // Moving stones
-            case 3:
-                PaintHelper.Clear();
-                GameBoard.Paint();
-                break;
-            case 4: // Winner Screen
-            case 5:
-                var showText = "Game is drawn!";
-                if (Game.phase == 4)
-                    showText = (Game.currentPlayer == 1 ? "White" : "Black") + " wins!";
-                PaintHelper.Clear();
-                GameBoard.Paint();
-                PaintHelper.FillRectangle(0, 0, canvas.width, canvas.height, 'rgba(225,225,225,0.85)');
-                PaintHelper.DrawText(3, 3, showText, 'large', 'black', 'center');
-                PaintHelper.DrawText(3, 4, '(Click anywhere to go to menu.)', 'normal', 'black', 'center');
-                break;
-        }
+    Game.ShowWinnerScreen = function () {
+        Game.phase = 4;
+        GameBoard.UpdateProperties();
+        winnerScreenText.innerText = (Game.currentPlayer == 1 ? "White" : "Black") + " wins!";
+        winnerScreen.style.display = 'table';
     };
     /**
-     * Updating canvas HTML dimensions to fit with the CSS values necessary for displaying the canvas correctly.
+     * Triggers the draw screen after a game.
      */
-    Game.ResizeScreen = function () {
-        canvas.height = canvas.scrollHeight;
-        canvas.width = canvas.scrollWidth;
+    Game.ShowDrawScreen = function () {
+        Game.phase = 5;
+        GameBoard.UpdateProperties();
+        winnerScreenText.innerText = "Game is drawn!";
+        winnerScreen.style.display = 'table';
     };
-    Game.playerAI = [null, null]; // set if a player is played by computer
+    /** Set if a player is played by computer */
+    Game.playerAI = [null, null];
+    /** How long AI will sleep before deciding its next move */
+    Game.enemyAIRandomSleepTime = 500; // ms
     return Game;
 }());
 /**
@@ -386,6 +371,7 @@ var GameBoard = (function () {
             this._activeStone = newStone;
             if (newStone)
                 newStone.active = true;
+            this.UpdateProperties();
         },
         enumerable: true,
         configurable: true
@@ -396,57 +382,64 @@ var GameBoard = (function () {
     GameBoard.Initialize = function () {
         this.lastTurnMill = -1;
         this.hashForDraw = [];
-        // Game board built up from left to right and up to down
-        this.gameFields = [
-            new GameField(0, 0),
-            new GameField(3, 0),
-            new GameField(6, 0),
-            new GameField(1, 1),
-            new GameField(3, 1),
-            new GameField(5, 1),
-            new GameField(2, 2),
-            new GameField(3, 2),
-            new GameField(4, 2),
-            new GameField(0, 3),
-            new GameField(1, 3),
-            new GameField(2, 3),
-            new GameField(4, 3),
-            new GameField(5, 3),
-            new GameField(6, 3),
-            new GameField(2, 4),
-            new GameField(3, 4),
-            new GameField(4, 4),
-            new GameField(1, 5),
-            new GameField(3, 5),
-            new GameField(5, 5),
-            new GameField(0, 6),
-            new GameField(3, 6),
-            new GameField(6, 6),
-        ];
-        // same index means pair -> left and right neighbor (horizontal connections)
-        var nachbarL = [0, 1, 3, 4, 6, 7, 9, 10, 12, 13, 15, 16, 18, 19, 21, 22];
-        var nachbarR = [1, 2, 4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 19, 20, 22, 23];
-        for (var i = 0; i < nachbarL.length; i++) {
-            GameBoard.gameFields[nachbarL[i]].neighborRight = GameBoard.gameFields[nachbarR[i]];
-            GameBoard.gameFields[nachbarR[i]].neighborLeft = GameBoard.gameFields[nachbarL[i]];
-        }
-        // same for vertical connections
-        var nachbarT = [0, 9, 3, 10, 6, 11, 1, 4, 16, 19, 8, 12, 5, 13, 2, 14];
-        var nachbarB = [9, 21, 10, 18, 11, 15, 4, 7, 19, 22, 12, 17, 13, 20, 14, 23];
-        for (var i = 0; i < nachbarT.length; i++) {
-            GameBoard.gameFields[nachbarT[i]].neighborBottom = GameBoard.gameFields[nachbarB[i]];
-            GameBoard.gameFields[nachbarB[i]].neighborTop = GameBoard.gameFields[nachbarT[i]];
-        }
-        // create stones and place them next to the game board
-        this.stones = [new Array(Settings.stoneCountPerPlayer), new Array(Settings.stoneCountPerPlayer)];
-        for (var _i = 0, _a = [0, 1]; _i < _a.length; _i++) {
-            var color = _a[_i];
-            for (var i = 0; i < Settings.stoneCountPerPlayer; i++) {
-                this.stones[color][i] = new GameStone(color);
-                this.stones[color][i].position = { x: 7 - 8 * color, y: 6 / (Settings.stoneCountPerPlayer - 1) * i };
+        // only need to create fields once as they do not change
+        if (!this.gameFields) {
+            // Game board built up from left to right and up to down
+            this.gameFields = [
+                new GameField(0, 0),
+                new GameField(3, 0),
+                new GameField(6, 0),
+                new GameField(1, 1),
+                new GameField(3, 1),
+                new GameField(5, 1),
+                new GameField(2, 2),
+                new GameField(3, 2),
+                new GameField(4, 2),
+                new GameField(0, 3),
+                new GameField(1, 3),
+                new GameField(2, 3),
+                new GameField(4, 3),
+                new GameField(5, 3),
+                new GameField(6, 3),
+                new GameField(2, 4),
+                new GameField(3, 4),
+                new GameField(4, 4),
+                new GameField(1, 5),
+                new GameField(3, 5),
+                new GameField(5, 5),
+                new GameField(0, 6),
+                new GameField(3, 6),
+                new GameField(6, 6),
+            ];
+            // same index means pair -> left and right neighbor (horizontal connections)
+            var nachbarL = [0, 1, 3, 4, 6, 7, 9, 10, 12, 13, 15, 16, 18, 19, 21, 22];
+            var nachbarR = [1, 2, 4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 19, 20, 22, 23];
+            for (var i = 0; i < nachbarL.length; i++) {
+                GameBoard.gameFields[nachbarL[i]].neighborRight = GameBoard.gameFields[nachbarR[i]];
+                GameBoard.gameFields[nachbarR[i]].neighborLeft = GameBoard.gameFields[nachbarL[i]];
+            }
+            // same for vertical connections
+            var nachbarT = [0, 9, 3, 10, 6, 11, 1, 4, 16, 19, 8, 12, 5, 13, 2, 14];
+            var nachbarB = [9, 21, 10, 18, 11, 15, 4, 7, 19, 22, 12, 17, 13, 20, 14, 23];
+            for (var i = 0; i < nachbarT.length; i++) {
+                GameBoard.gameFields[nachbarT[i]].neighborBottom = GameBoard.gameFields[nachbarB[i]];
+                GameBoard.gameFields[nachbarB[i]].neighborTop = GameBoard.gameFields[nachbarT[i]];
             }
         }
-        this.activeStone = this.stones[Game.currentPlayer][Settings.stoneCountPerPlayer - 1];
+        // remove old stones from html
+        if (this.stones)
+            this.stones.forEach(function (arr) { return arr.forEach(function (s) { return s.Remove(); }); });
+        // create stones and place them next to the game board
+        this.stones = [new Array(9), new Array(9)];
+        for (var _i = 0, _a = [0, 1]; _i < _a.length; _i++) {
+            var color = _a[_i];
+            for (var i = 0; i < 9; i++) {
+                this.stones[color][i] = new GameStone(color, { x: 7 - 8 * color, y: 6 / 8 * i });
+            }
+        }
+        this.activeStone = this.stones[Game.currentPlayer][8];
+        // Update stones and fields
+        this.UpdateProperties();
     };
     /**
      * Returns all stones of a given color that are placed on the field.
@@ -455,6 +448,13 @@ var GameBoard = (function () {
      */
     GameBoard.GetStonesOnField = function (stonecolor) {
         return this.stones[stonecolor].filter(function (s) { return s.isPlaced; });
+    };
+    /**
+     * Updates properties and style of fields and stones.
+     */
+    GameBoard.UpdateProperties = function () {
+        this.gameFields.forEach(function (f) { return f.UpdateProperties(); });
+        this.stones.forEach(function (a) { return a.forEach(function (s) { return s.UpdateProperties(); }); });
     };
     /**
      * Places a stone on a given field.
@@ -513,8 +513,8 @@ var GameBoard = (function () {
         if (!stone.field || stone.isInClosedMill || Game.phase != 3) {
             return false; // protected stone
         }
-        stone.field.owner = null;
         this.stones[stone.color].splice(this.stones[stone.color].indexOf(stone), 1);
+        stone.Remove();
         // Go back to the last game phase before removing a stone
         Game.phase = this.lastGamePhase;
         this.SwitchCurrentPlayer();
@@ -530,7 +530,7 @@ var GameBoard = (function () {
             this.lastTurnMill = Game.turn;
             if (Game.phase == 2 && this.stones[1 - Game.currentPlayer].length <= 3) {
                 // mill created and enemy has only 3 stones left -> player wins
-                Game.phase = 4;
+                Game.ShowWinnerScreen();
                 return true;
             }
             // Check if there are any enemy stones that can be removed.
@@ -539,6 +539,8 @@ var GameBoard = (function () {
                 this.lastGamePhase = Game.phase; // to go back after removal
                 Game.phase = 3; // Remove stone for closed Muehle
                 this.activeStone = null;
+                // Update stone and field properties
+                this.UpdateProperties();
                 // Check if current player is AI and if so let him move
                 // Need to call this manually here as player is not switching.
                 this.TryAIMove();
@@ -547,7 +549,7 @@ var GameBoard = (function () {
         }
         // check for game draw
         if (this.CheckAndUpdateDraw()) {
-            Game.phase = 5;
+            Game.ShowDrawScreen();
             return false;
         }
         this.SwitchCurrentPlayer();
@@ -560,7 +562,7 @@ var GameBoard = (function () {
         // Check if next player can move some stones
         if (Game.turn >= 17 && !this.GetStonesOnField(1 - Game.currentPlayer).some(function (s) { return s.isMoveable; })) {
             // no moves possible anymore
-            Game.phase = 4;
+            Game.ShowWinnerScreen();
             return;
         }
         // Check if phase has to switch from placing to moving stones
@@ -572,6 +574,8 @@ var GameBoard = (function () {
         Game.currentPlayer = 1 - Game.currentPlayer;
         this.activeStone = this.GetUnsettledStone(Game.currentPlayer); // returns null if no unsettled stones
         Game.turn++;
+        // Update stone and field properties
+        this.UpdateProperties();
         // Check if its AIs turn
         this.TryAIMove();
     };
@@ -624,75 +628,6 @@ var GameBoard = (function () {
     GameBoard.CurrentStateToNumber = function () {
         return this.gameFields.map(function (f, i) { return Math.pow(3, i) * (f.owner ? (f.owner.color == 1 ? 2 : 1) : 0); }).reduce(function (a, b) { return a + b; }, 0);
     };
-    /**
-     * Draws the game board and stones on the canvas.
-     */
-    GameBoard.Paint = function () {
-        var fieldLineWidth = Settings.fieldLineWidthFactor * this.fieldLength;
-        var stoneBorderWidth = Settings.stoneBorderWidthFactor * this.fieldLength;
-        var context = canvas.getContext('2d');
-        //  Draw connecting lines between game fields
-        for (var _i = 0, _a = GameBoard.gameFields; _i < _a.length; _i++) {
-            var field = _a[_i];
-            var realPos = this.GetRealPosition(field.position);
-            // Only have to draw lines to right and bottom neighbors (left and top equivalents exist)
-            if (field.neighborRight) {
-                var realPosNeighbor = this.GetRealPosition(field.neighborRight.position);
-                PaintHelper.DrawLine(realPos.x, realPos.y, realPosNeighbor.x, realPosNeighbor.y, fieldLineWidth, Settings.fieldColor);
-            }
-            if (field.neighborBottom) {
-                var realPosNeighbor = this.GetRealPosition(field.neighborBottom.position);
-                PaintHelper.DrawLine(realPos.x, realPos.y, realPosNeighbor.x, realPosNeighbor.y, fieldLineWidth, Settings.fieldColor);
-            }
-        }
-        // Draw fields
-        for (var _b = 0, _c = GameBoard.gameFields; _b < _c.length; _b++) {
-            var field = _c[_b];
-            field.Paint();
-        }
-        // Draw stones
-        for (var _d = 0, _e = [0, 1]; _d < _e.length; _d++) {
-            var color = _e[_d];
-            for (var _f = 0, _g = GameBoard.stones[color]; _f < _g.length; _f++) {
-                var stone = _g[_f];
-                stone.Paint();
-            }
-        }
-    };
-    /**
-     * Returns the real position (in px) of a field position (typically integer values).
-     * The field position is measured in fieldLength starting at (0,0) at the center of the top left field.
-     * @param {Position2} intPos - The position on the game board.
-     * @returns {Position2} (in px) the position on the canvas.
-     */
-    GameBoard.GetRealPosition = function (intPos) {
-        var fieldLength = this.fieldLength;
-        var offsetX = (canvas.width - fieldLength * 7) / 2;
-        var offsetY = (canvas.height - fieldLength * 7) / 2;
-        return { x: offsetX + (intPos.x + 0.5) * fieldLength,
-            y: offsetY + (intPos.y + 0.5) * fieldLength };
-    };
-    /**
-     * Inverse function of GetRealPosition().
-     * @param {Position2} realPos - (in px) The position on the canvas.
-     * @returns {Position2} the position on the game board in whole numbers.
-     */
-    GameBoard.getFieldPosition = function (realPos) {
-        var fieldLength = this.fieldLength;
-        var offsetX = (canvas.width - fieldLength * 7) / 2;
-        var offsetY = (canvas.height - fieldLength * 7) / 2;
-        return { x: Math.floor((realPos.x - offsetX) / fieldLength),
-            y: Math.floor((realPos.y - offsetX) / fieldLength) };
-    };
-    Object.defineProperty(GameBoard, "fieldLength", {
-        /** The length of a game field. Many settings/figures are measured in this unit. */
-        get: function () {
-            // 9/7 as we need 9 fields horizontal including two columns for stones placed outside the field.
-            return Math.min(canvas.height / 7.0, canvas.width / 9.0);
-        },
-        enumerable: true,
-        configurable: true
-    });
     return GameBoard;
 }());
 /**
@@ -706,8 +641,56 @@ var GameField = (function () {
      * @constructor
      */
     function GameField(xPos, yPos) {
-        this.position = { x: xPos, y: yPos };
+        var _this = this;
+        this._element = document.createElement('div');
+        this.position = { x: xPos, y: yPos }; // after creating the div element we can set the position
+        this._element.setAttribute('class', 'field');
+        gameBoard.appendChild(this._element);
+        this._element.onclick = function () { return _this.OnClicked(); }; // lambda expression to avoid complications with 'this'
     }
+    Object.defineProperty(GameField.prototype, "position", {
+        /** Position of the field on the board in whole numbers. */
+        get: function () {
+            return this._position;
+        },
+        set: function (newPos) {
+            this._position = newPos;
+            if (this.element) {
+                this.element.style.transform = 'translate(' + (newPos.x - 3) * 10 + 'vmin, ' + (newPos.y - 3) * 10 + 'vmin)';
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(GameField.prototype, "element", {
+        /**
+         * The DIV element representing this field.
+         */
+        get: function () {
+            return this._element;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(GameField.prototype, "accessible", {
+        /**
+         * can a stone be moved onto the field
+         */
+        get: function () {
+            return this._accessible;
+        },
+        set: function (newAccessible) {
+            if (newAccessible) {
+                this.element.classList.add('fieldMoveable');
+            }
+            else {
+                this.element.classList.remove('fieldMoveable');
+            }
+            this._accessible = newAccessible;
+        },
+        enumerable: true,
+        configurable: true
+    });
     Object.defineProperty(GameField.prototype, "isClosedMillHorizontal", {
         /** Returns true if a horizontal mill is established using this field. */
         get: function () {
@@ -738,40 +721,12 @@ var GameField = (function () {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(GameField.prototype, "isHovered", {
-        /** Returns true if the mouse is hovering over the field. */
-        get: function () {
-            var stoneRadius = Settings.stoneRadiusFactor * GameBoard.fieldLength;
-            var realPos = GameBoard.GetRealPosition(this.position);
-            var mousePos = InputController.mousePosition;
-            return Math.pow(realPos.x - mousePos.x, 2) + Math.pow(realPos.y - mousePos.y, 2) <= Math.pow(stoneRadius, 2);
-        },
-        enumerable: true,
-        configurable: true
-    });
     /**
-     * Method painting the game field on the canvas.
+     * Updates field properties and style converning accessible.
      */
-    GameField.prototype.Paint = function () {
-        var color = Settings.fieldColor;
-        if (Game.playerAI[Game.currentPlayer]) {
-        }
-        else if (Game.phase == 1 && !this.owner && this.isHovered) {
-            // Stone can placed on this field and is hovered
-            // (we do not mark all fields as this is clear and gives no information, also looks nicer)
-            color = Settings.fieldColorHover;
-        }
-        else if (Game.phase == 2 && GameBoard.activeStone && this.CanStoneMoveTo(GameBoard.activeStone)) {
-            // Active stone can be moved to this field, so mark it or shot if it is hovered
-            if (this.isHovered) {
-                color = Settings.fieldColorHover;
-            }
-            else {
-                color = Settings.fieldColorMoveable;
-            }
-        }
-        var pos = GameBoard.GetRealPosition(this.position);
-        PaintHelper.FillCircle(pos.x, pos.y, Settings.fieldRadiusFactor * GameBoard.fieldLength, color);
+    GameField.prototype.UpdateProperties = function () {
+        this.accessible = (Game.phase == 1 && !this.owner) ||
+            (Game.phase == 2 && GameBoard.activeStone && this.CanStoneMoveTo(GameBoard.activeStone));
     };
     /**
      * Method called if clicked on the game field.
@@ -827,12 +782,32 @@ var GameStone = (function () {
      * @param {number} color - Color of the stone (0: black, 1: white).
      * @constructor
      */
-    function GameStone(farbe) {
-        this._color = farbe;
-        this.position = { x: -1, y: -1 }; // set initial position to (-1,-1) - does not matter
-        this.active = false;
-        // set random patternOffset so all stones look different
-        this.patternOffset = { x: Math.floor(Math.random() * 201), y: Math.floor(Math.random() * 201) };
+    function GameStone(color, position) {
+        var _this = this;
+        this._position = null;
+        this._active = false;
+        this._moveable = false;
+        this._removeable = false;
+        /**
+         * field on which the stone currently is placed if any
+         */
+        this.field = null;
+        this._color = color;
+        this._element = document.createElement('div');
+        this.position = position; // after creating the div element we can set the position
+        this._element.setAttribute('class', color == 1 ? 'stoneWhite' : 'stoneBlack');
+        if (Game.enemyAIRandomSleepTime <= 200) {
+            // instant transition moving stones
+            this._element.classList.add("stoneMoveInstant");
+        }
+        else if (Game.enemyAIRandomSleepTime <= 400) {
+            // fast transition
+            this._element.classList.add("stoneMoveFast");
+        }
+        // set random offset so all stones look different
+        this._element.style.backgroundPosition = Math.random() * 8 + 'vmin, ' + Math.random() * 8 + 'vmin';
+        gameBoard.appendChild(this._element);
+        this._element.onclick = function () { return _this.OnClicked(); }; // lambda expression to avoid complications with 'this'
     }
     Object.defineProperty(GameStone.prototype, "color", {
         /**
@@ -840,6 +815,89 @@ var GameStone = (function () {
          */
         get: function () {
             return this._color;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(GameStone.prototype, "position", {
+        /**
+         * position of the stone in whole numbers
+         */
+        get: function () {
+            return this._position;
+        },
+        set: function (newPos) {
+            this._position = newPos;
+            if (this.element) {
+                this.element.style.transform = 'translate(' + (newPos.x - 3) * 10 + 'vmin, ' + (newPos.y - 3) * 10 + 'vmin)';
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(GameStone.prototype, "element", {
+        /**
+         * The DIV element representing this stone.
+         */
+        get: function () {
+            return this._element;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(GameStone.prototype, "active", {
+        /**
+         * telling if the stone is the active one
+         */
+        get: function () {
+            return this._active;
+        },
+        set: function (newActive) {
+            if (newActive) {
+                this.element.classList.add('stoneActive');
+            }
+            else {
+                this.element.classList.remove('stoneActive');
+            }
+            this._active = newActive;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(GameStone.prototype, "moveable", {
+        /**
+         * can the stone be moved
+         */
+        get: function () {
+            return this._moveable;
+        },
+        set: function (newMoveable) {
+            if (newMoveable) {
+                this.element.classList.add('stoneMoveable');
+            }
+            else {
+                this.element.classList.remove('stoneMoveable');
+            }
+            this._moveable = newMoveable;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(GameStone.prototype, "removeable", {
+        /**
+         * can the stone be removed
+         */
+        get: function () {
+            return this._removeable;
+        },
+        set: function (newRemoveable) {
+            if (newRemoveable) {
+                this.element.classList.add('stoneRemoveable');
+            }
+            else {
+                this.element.classList.remove('stoneRemoveable');
+            }
+            this._removeable = newRemoveable;
         },
         enumerable: true,
         configurable: true
@@ -854,68 +912,6 @@ var GameStone = (function () {
         enumerable: true,
         configurable: true
     });
-    /**
-     * Paint the stone on the canvas.
-     */
-    GameStone.prototype.Paint = function () {
-        var stoneBorderWidth = Settings.stoneBorderWidthFactor * GameBoard.fieldLength;
-        var stoneBorderColor = this.color == 1 ? Settings.stoneWhiteBorderColor : Settings.stoneBlackBorderColor;
-        if (this.active) {
-            // Active stone
-            stoneBorderColor = Settings.stoneBorderColorActive;
-            stoneBorderWidth *= Settings.stoneBorderMarkedFactor;
-        }
-        else if (Game.phase == 2 && this.isHovered && this.isMoveable && this.color == Game.currentPlayer && !Game.playerAI[Game.currentPlayer]) {
-            // Hovered stone that can be moved by human player
-            stoneBorderColor = Settings.stoneBorderColorHovered;
-            stoneBorderWidth *= Settings.stoneBorderMarkedFactor;
-        }
-        else if (Game.phase == 2 && this.color == Game.currentPlayer && this.isMoveable) {
-            // Mark stones that can be moved
-            stoneBorderColor = Settings.stoneBorderColorMoveable;
-            stoneBorderWidth *= Settings.stoneBorderMarkedFactor;
-        }
-        else if (Game.phase == 3 && this.color != Game.currentPlayer && !this.isInClosedMill && this.isPlaced) {
-            // Mark stones that can be removed and highlight the stone currently hovered
-            if (this.isHovered && !Game.playerAI[Game.currentPlayer])
-                stoneBorderColor = Settings.stoneBorderColorRemoveableHovered;
-            else
-                stoneBorderColor = Settings.stoneBorderColorRemoveable;
-            stoneBorderWidth *= Settings.stoneBorderMarkedFactor;
-        }
-        var realPos = GameBoard.GetRealPosition(this.position);
-        PaintHelper.FillCirclePattern(realPos.x, realPos.y, Settings.stoneRadiusFactor * GameBoard.fieldLength, imgStonePattern[this.color], stoneBorderColor, stoneBorderWidth, this.patternOffset);
-    };
-    Object.defineProperty(GameStone.prototype, "isHovered", {
-        /**
-         * Returns true if the stone is currently hovered by mouse.
-         */
-        get: function () {
-            var stoneRadius = Settings.stoneRadiusFactor * GameBoard.fieldLength;
-            var realPos = GameBoard.GetRealPosition(this.position);
-            var mousePos = InputController.mousePosition;
-            return Math.pow(realPos.x - mousePos.x, 2) + Math.pow(realPos.y - mousePos.y, 2) <= Math.pow(stoneRadius, 2);
-        },
-        enumerable: true,
-        configurable: true
-    });
-    /**
-     * Method called if clicked on stone.
-     * @returns {boolean} if click was consumed by the stone or not.
-     */
-    GameStone.prototype.OnClicked = function () {
-        if (Game.phase == 2 && Game.currentPlayer == this.color && this.isMoveable) {
-            // Stone can be moved -> activate him
-            GameBoard.activeStone = this;
-            return true;
-        }
-        else if (Game.phase == 3 && Game.currentPlayer != this.color && !this.isInClosedMill) {
-            // Stone can be removed -> do it
-            GameBoard.RemoveStoneFromField(this);
-            return true;
-        }
-        return false;
-    };
     Object.defineProperty(GameStone.prototype, "isMoveable", {
         /**
          * Returns true if the stone can be moved on the field.
@@ -939,276 +935,39 @@ var GameStone = (function () {
         enumerable: true,
         configurable: true
     });
+    /**
+     * Updates stone properties and style converning moveable and removeable.
+     */
+    GameStone.prototype.UpdateProperties = function () {
+        // Mark stones that can be moved
+        this.moveable = Game.phase == 2 && this.color == Game.currentPlayer && this.isMoveable;
+        // Mark stones that can be removed and highlight the stone currently hovered
+        this.removeable = Game.phase == 3 && this.color != Game.currentPlayer && !this.isInClosedMill && this.isPlaced;
+    };
+    /**
+     * Method called if clicked on stone.
+     * @returns {boolean} if click was consumed by the stone or not.
+     */
+    GameStone.prototype.OnClicked = function () {
+        if (Game.phase == 2 && Game.currentPlayer == this.color && this.isMoveable) {
+            // Stone can be moved -> activate him
+            GameBoard.activeStone = this;
+            return true;
+        }
+        else if (Game.phase == 3 && Game.currentPlayer != this.color && !this.isInClosedMill) {
+            // Stone can be removed -> do it
+            GameBoard.RemoveStoneFromField(this);
+            return true;
+        }
+        return false;
+    };
+    GameStone.prototype.Remove = function () {
+        if (this.field)
+            this.field.owner = null;
+        this.field = null;
+        this.element.remove();
+    };
     return GameStone;
-}());
-/**
- * Class that handles mouse input.
- */
-var InputController = (function () {
-    function InputController() {
-    }
-    Object.defineProperty(InputController, "mousePosition", {
-        /**
-         * Current mouse position relative to the canvas.
-         */
-        get: function () {
-            return InputController._mousePos;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    /**
-     * Initialize the controller by registering mouse handlers;
-     */
-    InputController.InitController = function () {
-        canvas.addEventListener('mousemove', this.RegisterMouseMove, false);
-        canvas.addEventListener("mouseout", this.RegisterMouseOut, false);
-        canvas.addEventListener("click", this.RegisterMouseClick, false);
-    };
-    /**
-     * Event handler that is called if mouse is moved inside the canvas.
-     */
-    InputController.RegisterMouseMove = function (evt) {
-        // Retrieve and internally store mouse position.
-        var rect = canvas.getBoundingClientRect();
-        InputController._mousePos = {
-            x: evt.clientX - rect.left,
-            y: evt.clientY - rect.top
-        };
-    };
-    /**
-     * Event handler that is called if mouse is moved out of the canvas.
-     */
-    InputController.RegisterMouseOut = function (evt) {
-        // Set mouse position to (0,0) so no elements are hovered anymore.
-        InputController._mousePos = { x: 0, y: 0 };
-    };
-    /**
-     * Event handler that is called if mouse click inside canvas is registered.
-     */
-    InputController.RegisterMouseClick = function (evt) {
-        // If winning screen we only need to detect if it was clicked somewhere
-        if (Game.phase == 4 || Game.phase == 5) {
-            Menu.ReturnToMenu();
-            return;
-        }
-        // No input possible/necessary if active player is AI
-        if (Game.playerAI[Game.currentPlayer])
-            return;
-        // Forward click to fields that may be concerned about
-        for (var _i = 0, _a = GameBoard.gameFields; _i < _a.length; _i++) {
-            var field = _a[_i];
-            if (field.isHovered && field.OnClicked())
-                return;
-        }
-    };
-    InputController._mousePos = { x: 0, y: 0 };
-    return InputController;
-}());
-/**
- * Static class providing functions to comfortably draw figures on the canvas.
- */
-var PaintHelper = (function () {
-    function PaintHelper() {
-    }
-    /**
-     * Draws a circle with given properties on the canvas.
-     * @param {number} centerX - (in px) The x coordinate of the circles middle.
-     * @param {number} centerY - (in px) The y coordinate of the circles middle.
-     * @param {number} radius - (in px) The radius of the circle.
-     * @param {string} filling - The fillStyle property of the context.
-     * @param {string} [border] - If set a border is drawn with the strokeStyle property being this value.
-     * @param {number} [borderWidth] - (in px) The border width if set, otherwise 3px is chosen.
-     */
-    PaintHelper.FillCircle = function (centerX, centerY, radius, filling, border, borderWidth) {
-        var context = canvas.getContext('2d');
-        context.beginPath();
-        context.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
-        context.fillStyle = filling;
-        context.fill();
-        if (border) {
-            if (borderWidth) {
-                context.lineWidth = borderWidth;
-            }
-            else {
-                context.lineWidth = 3;
-            }
-            context.strokeStyle = border;
-            context.stroke();
-        }
-    };
-    /**
-     * Draws a circle with given properties on the canvas filled by a given pattern.
-     * @param {number} centerX - (in px) The x coordinate of the circles middle.
-     * @param {number} centerY - (in px) The y coordinate of the circles middle.
-     * @param {number} radius - (in px) The radius of the circle.
-     * @param {CanvasPattern} pattern - The pattern to fill the circle with.
-     * @param {string} [border] - If set a border is drawn with the strokeStyle property being this value.
-     * @param {number} [borderWidth] - (in px) The border width if set, otherwise 3px is chosen.
-     * @param {Position2} [patternOffset] - (in {px,px}) If specified, sets the offset of the pattern to the given constant value.
-     *      Otherwise pattern is dependent on position on the screen.
-     */
-    PaintHelper.FillCirclePattern = function (centerX, centerY, radius, pattern, border, borderWidth, patternOffset) {
-        var context = canvas.getContext('2d');
-        if (patternOffset) {
-            // By translating the context same offset will result in the same clipping..
-            // In the other case same centerX,centerY will result in the same clipping
-            // meaning that a moving object will result in a moving cutting but the pattern being fixed in the background.
-            context.save();
-            context.translate(centerX + patternOffset.x, centerY + patternOffset.y);
-        }
-        context.beginPath();
-        if (patternOffset) {
-            context.arc(-patternOffset.x, -patternOffset.y, radius, 0, 2 * Math.PI, false);
-        }
-        else {
-            context.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
-        }
-        context.fillStyle = pattern;
-        context.fill();
-        if (border) {
-            if (borderWidth) {
-                context.lineWidth = borderWidth;
-            }
-            else {
-                context.lineWidth = 3;
-            }
-            context.strokeStyle = border;
-            context.stroke();
-        }
-        if (patternOffset) {
-            // translate context back to its original position
-            context.restore();
-        }
-    };
-    /**
-     * Draws a straight line between two points.
-     * @param {number} fromX - (in px) The x coordinate of the starting point.
-     * @param {number} fromY - (in px) The y coordinate of the starting point.
-     * @param {number} toX - (in px) The x coordinate of the ending point.
-     * @param {number} toY - (in px) The y coordinate of the ending point.
-     * @param {number} [width] - (in px) The width of the line. If none given, default/last value is used.
-     * @param {string} [color] - The strokeStyle property of the context, for example a color.
-     */
-    PaintHelper.DrawLine = function (fromX, fromY, toX, toY, width, color) {
-        var context = canvas.getContext('2d');
-        context.beginPath();
-        context.moveTo(fromX, fromY);
-        context.lineTo(toX, toY);
-        if (width) {
-            context.lineWidth = width;
-        }
-        if (color) {
-            context.strokeStyle = color;
-        }
-        context.stroke();
-    };
-    /**
-     * Draws a filled rectangle on the canvas.
-     * @param {number} x - (in px) The x coordinate of the top left corner.
-     * @param {number} y - (in px) The y coordinate of the top left corner.
-     * @param {number} width - (in px) The width of the rectangle.
-     * @param {number} height - (in px) The height of the rectangle.
-     * @param {number} width - (in px) The width of the border line.
-     * @param {string} [color] - The strokeStyle property of the context, for example a color.
-     */
-    PaintHelper.FillRectangle = function (x, y, width, height, color) {
-        var context = canvas.getContext('2d');
-        if (color) {
-            context.fillStyle = color;
-        }
-        context.fillRect(x, y, width, height);
-    };
-    /**
-     * Draws text on the canvas.
-     * @param {number} x - (in px) The x coordinate where to place the text.
-     * @param {number} y - (in px) The y coordinate where to place the text.
-     * @param {string} text - The text to be drawn.
-     * @param {string} [font] - If given, specifies the font property. Special values 'normal' and 'large' exist.
-     * @param {string} [color] - The fillStyle property of the context, for example a color.
-     * @param {string} [textAlign] - The textAlign property being able to center text or make it right-aligned.
-     */
-    PaintHelper.DrawText = function (x, y, text, font, color, textAlign) {
-        var context = canvas.getContext('2d');
-        if (font) {
-            if (font == 'normal')
-                context.font = Math.floor(GameBoard.fieldLength * Settings.textSizeNormalMultiplier) + 'px Calibri';
-            else if (font == 'large') {
-                context.font = 'bold ' + Math.floor(GameBoard.fieldLength * Settings.textSizeBigMultiplier) + 'px Arial';
-                text = text.toUpperCase();
-            }
-            else
-                context.font = font;
-        }
-        if (textAlign) {
-            context.textAlign = textAlign;
-        }
-        if (color) {
-            context.fillStyle = color;
-        }
-        var realPos = GameBoard.GetRealPosition({ x: x, y: y });
-        context.fillText(text, realPos.x, realPos.y);
-    };
-    /**
-     * Removes everything drawn onto the canvas.
-     */
-    PaintHelper.Clear = function () {
-        var context = canvas.getContext('2d');
-        context.clearRect(0, 0, canvas.width, canvas.height);
-    };
-    return PaintHelper;
-}());
-/**
- * Static class that stores all settings for the game in a central place.
- */
-var Settings = (function () {
-    function Settings() {
-    }
-    /** How long between two calls of Game.Loop() */
-    Settings.gameLoopInterval = 100; // ms
-    /** How long AI will sleep before deciding its next move */
-    Settings.enemyAIRandomSleepTime = 500; // ms
-    /** Path to pattern image of black stone */
-    Settings.stoneBlackImageSource = 'pictures/marmor3s.jpg';
-    /** Path to pattern image of white stone */
-    Settings.stoneWhiteImageSource = 'pictures/marmor4s.jpg';
-    /** Radius of stones in units of 1 fieldLength */
-    Settings.stoneRadiusFactor = 0.4; // in fieldLength
-    /** Width of stone border in units of 1 fieldLength */
-    Settings.stoneBorderWidthFactor = 0.02; // in fieldLength
-    /** Factor to which the stone borders increase if marked */
-    Settings.stoneBorderMarkedFactor = 3; // in normal thickness
-    /** Border color of normal white stones */
-    Settings.stoneWhiteBorderColor = '#000000';
-    /** Border color of normal black stones */
-    Settings.stoneBlackBorderColor = '#ffffff';
-    /** Border color of the active stone */
-    Settings.stoneBorderColorActive = '#ff7700';
-    /** Border color of hovered stones */
-    Settings.stoneBorderColorHovered = '#dd4400';
-    /** Border color of stones marked to be moveable */
-    Settings.stoneBorderColorMoveable = '#00ff00';
-    /** Border color of stones that can be removed */
-    Settings.stoneBorderColorRemoveable = '#ff0000';
-    /** Border color of stones that can be removed and are hovered */
-    Settings.stoneBorderColorRemoveableHovered = '#ff7777';
-    /** Radius of game fields in units of 1 fieldLength */
-    Settings.fieldRadiusFactor = 0.1; // in fieldLength
-    /** Width of game board lines in units of 1 fieldLength */
-    Settings.fieldLineWidthFactor = 0.05; // in fieldLength
-    /** Color of normal game fields */
-    Settings.fieldColor = '#000000';
-    /** Color of hovered fields */
-    Settings.fieldColorHover = '#00aa00';
-    /** Color of fields where stones can move to */
-    Settings.fieldColorMoveable = '#44ff00';
-    /** Number of stones per player at the beginning */
-    Settings.stoneCountPerPlayer = 9;
-    /** Text size of big text in units of 1 fieldLength */
-    Settings.textSizeBigMultiplier = 0.85; // in fieldLength
-    /** Text size of normal text in units of 1 fieldLength */
-    Settings.textSizeNormalMultiplier = 0.46; // in fieldLength
-    return Settings;
 }());
 /**
  * Implementing functions necessary for the menu.
@@ -1222,7 +981,8 @@ var Menu = (function () {
     Menu.StartGame = function () {
         Game.Start();
         gameMenu.style.display = 'none';
-        canvas.style.display = 'block';
+        gameBoard.style.display = 'block';
+        winnerScreen.style.display = 'none';
     };
     /**
      * Reset game and show menu.
@@ -1230,7 +990,8 @@ var Menu = (function () {
     Menu.ReturnToMenu = function () {
         Game.Reset();
         gameMenu.style.display = 'block';
-        canvas.style.display = 'none';
+        gameBoard.style.display = 'none';
+        winnerScreen.style.display = 'none';
     };
     /**
      * This function is called if a menu setting is changed and updates the game values.
@@ -1274,7 +1035,7 @@ var Menu = (function () {
                 inputAITime.value = Math.floor(time).toString();
                 time = Math.floor(time);
             }
-            Settings.enemyAIRandomSleepTime = time;
+            Game.enemyAIRandomSleepTime = time;
         }
         else {
             // no valid number -> reset field
@@ -1289,68 +1050,19 @@ var Menu = (function () {
  * - Regeln in eigene Klasse ausgliedern -> besserer Überblick / Struktur
  * - FieldPosition und RealPosition interfaces erstellen, die Position2 ersetzen und eindeutiger zuweisbar sind.
  */
-// Define variables to globally access canvas, context and gameMenu
-var canvas;
-var context;
+// Define variables to globally gameBoard and gameMenu
 var gameMenu;
-// Store if images have been loaded -> start game only if finished loading
-var elementLoaded = new Array();
-var imgStone = [new Image(200, 200), new Image(200, 200)];
-var imgStonePattern;
+var gameBoard;
+var winnerScreen;
+var winnerScreenText;
 /**
  * This function is called when page finished loading.
  */
 function onLoad() {
     gameMenu = document.getElementById("gameMenu");
-    canvas = document.getElementById("myCanvas");
-    context = canvas.getContext("2d");
-    // need to initially set width and height property of canvas correctly
-    Game.ResizeScreen();
-    // load necessary images
-    imgStone.forEach(function (e) { return e.onload = addElementToLoad(); });
-    imgStone[0].src = Settings.stoneBlackImageSource;
-    imgStone[1].src = Settings.stoneWhiteImageSource;
-    // check if images are already loaded
-    checkLoadedFinish();
-}
-/**
- * Function checks if all elements are loaded and if so, onAllElementsLoaded() is called.
- * Otherwise 100ms later another check will be performed.
- */
-function checkLoadedFinish() {
-    if (everyElementLoaded()) {
-        onAllElementsLoaded();
-    }
-    else {
-        setTimeout(checkLoadedFinish, 100);
-    }
-}
-/**
- * Function is executed if checkLoadedFinish() was called and all images/resources are loaded.
- */
-function onAllElementsLoaded() {
-    // create patterns from loaded images
-    imgStonePattern = imgStone.map(function (img) { return context.createPattern(img, 'repeat'); });
-    // activate mouse input detection
-    InputController.InitController();
-    // reset game and start the game loop where canvas is redrawn etc.
+    gameBoard = document.getElementById("gameBoard");
+    winnerScreen = document.getElementById("winnerScreen");
+    winnerScreenText = document.getElementById("winnerScreenText");
     Game.Reset();
-    window.setInterval(Game.Loop, Settings.gameLoopInterval);
-}
-/**
- * Function adds a new element to the list of elements to load.
- * @returns {() => void} event handler for the onload event of the element that is loaded.
- */
-function addElementToLoad() {
-    elementLoaded.push(false);
-    var idx = elementLoaded.length - 1;
-    return function () { elementLoaded[idx] = true; };
-}
-/**
- * Checks if all elements added finished loading.
- * @returns {boolean} true iff all elements added by addElementToLoad() called the belonging onload event handler.
- */
-function everyElementLoaded() {
-    return elementLoaded.map(function (e) { return e ? 1 : 0; }).reduce(function (a, b) { return a + b; }) == elementLoaded.length;
 }
 //# sourceMappingURL=mill.js.map

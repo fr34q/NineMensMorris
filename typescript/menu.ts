@@ -8,7 +8,8 @@ class Menu {
     static StartGame() : void {
         Game.Start();
         gameMenu.style.display = 'none';
-        canvas.style.display = 'block';
+        gameBoard.style.display = 'block';
+        winnerScreen.style.display = 'none';
     }
 
     /**
@@ -17,7 +18,8 @@ class Menu {
     static ReturnToMenu() : void {
         Game.Reset();
         gameMenu.style.display = 'block';
-        canvas.style.display = 'none';
+        gameBoard.style.display = 'none';
+        winnerScreen.style.display = 'none';
     }
 
     /**
@@ -62,7 +64,7 @@ class Menu {
                 inputAITime.value = Math.floor(time).toString();
                 time = Math.floor(time);
             }
-            Settings.enemyAIRandomSleepTime = time;
+            Game.enemyAIRandomSleepTime = time;
         } else {
             // no valid number -> reset field
             inputAITime.value = "";

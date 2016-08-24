@@ -15,6 +15,8 @@ interface FieldPosition { x: number; y: number; }
 // Define variables to globally gameBoard and gameMenu
 let gameMenu : HTMLDivElement;
 let gameBoard : HTMLDivElement;
+let winnerScreen : HTMLDivElement;
+let winnerScreenText : HTMLSpanElement;
 
 /**
  * This function is called when page finished loading.
@@ -22,9 +24,8 @@ let gameBoard : HTMLDivElement;
 function onLoad() : void {
     gameMenu = <HTMLDivElement> document.getElementById("gameMenu");
     gameBoard = <HTMLDivElement> document.getElementById("gameBoard");
+    winnerScreen = <HTMLDivElement> document.getElementById("winnerScreen");
+    winnerScreenText = <HTMLSpanElement> document.getElementById("winnerScreenText");
 
-    // TODO Maybe not necessary anymore -> chekc later
-    // reset game and start the game loop where canvas is redrawn etc.
     Game.Reset();
-    window.setInterval(Game.Loop, Settings.gameLoopInterval);
 }

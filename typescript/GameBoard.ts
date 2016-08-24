@@ -20,6 +20,7 @@ class GameBoard
         this._activeStone = newStone;
         if (newStone)
             newStone.active = true;
+        this.UpdateProperties();
     }
 
     // stores last game phase while removing a stone to return there later
@@ -40,57 +41,64 @@ class GameBoard
         this.lastTurnMill = -1;
         this.hashForDraw = [];
         
-        // Game board built up from left to right and up to down
-        this.gameFields = [
-            new GameField(0, 0), //  0 - top left
-            new GameField(3, 0), //  1 - top center
-            new GameField(6, 0), //  2 - top right
-            new GameField(1, 1), //  3
-            new GameField(3, 1), //  4
-            new GameField(5, 1), //  5
-            new GameField(2, 2), //  6
-            new GameField(3, 2), //  7
-            new GameField(4, 2), //  8
-            new GameField(0, 3), //  9
-            new GameField(1, 3), // 10
-            new GameField(2, 3), // 11
-            new GameField(4, 3), // 12
-            new GameField(5, 3), // 13
-            new GameField(6, 3), // 14
-            new GameField(2, 4), // 15
-            new GameField(3, 4), // 16
-            new GameField(4, 4), // 17
-            new GameField(1, 5), // 18
-            new GameField(3, 5), // 19
-            new GameField(5, 5), // 20
-            new GameField(0, 6), // 21
-            new GameField(3, 6), // 22
-            new GameField(6, 6), // 23
-        ];
-        // same index means pair -> left and right neighbor (horizontal connections)
-        let nachbarL : number[] = [0, 1, 3, 4, 6, 7,  9, 10, 12, 13, 15, 16, 18, 19, 21, 22];
-        let nachbarR : number[] = [1, 2, 4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 19, 20, 22, 23];
-        for (var i = 0; i < nachbarL.length; i++) {
-            GameBoard.gameFields[nachbarL[i]].neighborRight = GameBoard.gameFields[nachbarR[i]];
-            GameBoard.gameFields[nachbarR[i]].neighborLeft = GameBoard.gameFields[nachbarL[i]];
-        }
-        // same for vertical connections
-        let nachbarT : number[] = [0,  9,  3, 10,  6, 11, 1, 4, 16, 19,  8, 12,  5, 13,  2, 14];
-        let nachbarB : number[] = [9, 21, 10, 18, 11, 15, 4, 7, 19, 22, 12, 17, 13, 20, 14, 23];
-        for (var i = 0; i < nachbarT.length; i++) {
-            GameBoard.gameFields[nachbarT[i]].neighborBottom = GameBoard.gameFields[nachbarB[i]];
-            GameBoard.gameFields[nachbarB[i]].neighborTop = GameBoard.gameFields[nachbarT[i]];
-        }
-
-        // create stones and place them next to the game board
-        this.stones = [new Array<GameStone>(Settings.stoneCountPerPlayer), new Array<GameStone>(Settings.stoneCountPerPlayer)];
-        for (var color of [0,1]) {
-            for (var i = 0; i < Settings.stoneCountPerPlayer; i++) {
-                this.stones[color][i] = new GameStone(color);
-                this.stones[color][i].position = {x: 7-8*color, y: 6/(Settings.stoneCountPerPlayer-1)*i};
+        // only need to create fields once as they do not change
+        if(!this.gameFields) {
+            // Game board built up from left to right and up to down
+            this.gameFields = [
+                new GameField(0, 0), //  0 - top left
+                new GameField(3, 0), //  1 - top center
+                new GameField(6, 0), //  2 - top right
+                new GameField(1, 1), //  3
+                new GameField(3, 1), //  4
+                new GameField(5, 1), //  5
+                new GameField(2, 2), //  6
+                new GameField(3, 2), //  7
+                new GameField(4, 2), //  8
+                new GameField(0, 3), //  9
+                new GameField(1, 3), // 10
+                new GameField(2, 3), // 11
+                new GameField(4, 3), // 12
+                new GameField(5, 3), // 13
+                new GameField(6, 3), // 14
+                new GameField(2, 4), // 15
+                new GameField(3, 4), // 16
+                new GameField(4, 4), // 17
+                new GameField(1, 5), // 18
+                new GameField(3, 5), // 19
+                new GameField(5, 5), // 20
+                new GameField(0, 6), // 21
+                new GameField(3, 6), // 22
+                new GameField(6, 6), // 23
+            ];
+            // same index means pair -> left and right neighbor (horizontal connections)
+            let nachbarL : number[] = [0, 1, 3, 4, 6, 7,  9, 10, 12, 13, 15, 16, 18, 19, 21, 22];
+            let nachbarR : number[] = [1, 2, 4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 19, 20, 22, 23];
+            for (var i = 0; i < nachbarL.length; i++) {
+                GameBoard.gameFields[nachbarL[i]].neighborRight = GameBoard.gameFields[nachbarR[i]];
+                GameBoard.gameFields[nachbarR[i]].neighborLeft = GameBoard.gameFields[nachbarL[i]];
+            }
+            // same for vertical connections
+            let nachbarT : number[] = [0,  9,  3, 10,  6, 11, 1, 4, 16, 19,  8, 12,  5, 13,  2, 14];
+            let nachbarB : number[] = [9, 21, 10, 18, 11, 15, 4, 7, 19, 22, 12, 17, 13, 20, 14, 23];
+            for (var i = 0; i < nachbarT.length; i++) {
+                GameBoard.gameFields[nachbarT[i]].neighborBottom = GameBoard.gameFields[nachbarB[i]];
+                GameBoard.gameFields[nachbarB[i]].neighborTop = GameBoard.gameFields[nachbarT[i]];
             }
         }
-        this.activeStone = this.stones[Game.currentPlayer][Settings.stoneCountPerPlayer-1];
+        // remove old stones from html
+        if(this.stones)
+            this.stones.forEach(arr => arr.forEach(s => s.Remove()));
+        // create stones and place them next to the game board
+        this.stones = [new Array<GameStone>(9), new Array<GameStone>(9)];
+        for (var color of [0,1]) {
+            for (var i = 0; i < 9; i++) {
+                this.stones[color][i] = new GameStone(color, {x: 7-8*color, y: 6/8*i});
+            }
+        }
+        this.activeStone = this.stones[Game.currentPlayer][8];
+
+        // Update stones and fields
+        this.UpdateProperties();
     }
 
     /** 
@@ -100,6 +108,14 @@ class GameBoard
      */
     static GetStonesOnField(stonecolor : number) : Array<GameStone> {
         return this.stones[stonecolor].filter(s => s.isPlaced);
+    }
+
+    /**
+     * Updates properties and style of fields and stones.
+     */
+    static UpdateProperties() : void {
+        this.gameFields.forEach(f => f.UpdateProperties());
+        this.stones.forEach(a => a.forEach(s => s.UpdateProperties()));
     }
 
     /** 
@@ -162,8 +178,8 @@ class GameBoard
         if(!stone.field || stone.isInClosedMill || Game.phase != 3) {
             return false; // protected stone
         }
-        stone.field.owner = null;
         this.stones[stone.color].splice(this.stones[stone.color].indexOf(stone), 1);
+        stone.Remove();
 
         // Go back to the last game phase before removing a stone
         Game.phase = this.lastGamePhase;
@@ -182,7 +198,7 @@ class GameBoard
 
             if (Game.phase == 2 && this.stones[1 - Game.currentPlayer].length <= 3) {
                 // mill created and enemy has only 3 stones left -> player wins
-                Game.phase = 4;
+                Game.ShowWinnerScreen();
                 return true;
             }
             // Check if there are any enemy stones that can be removed.
@@ -191,6 +207,9 @@ class GameBoard
                 this.lastGamePhase = Game.phase; // to go back after removal
                 Game.phase = 3; // Remove stone for closed Muehle
                 this.activeStone = null;
+
+                // Update stone and field properties
+                this.UpdateProperties();
 
                 // Check if current player is AI and if so let him move
                 // Need to call this manually here as player is not switching.
@@ -201,7 +220,7 @@ class GameBoard
         }
         // check for game draw
         if (this.CheckAndUpdateDraw()) {
-            Game.phase = 5;
+            Game.ShowDrawScreen();
             return false;
         }
 
@@ -216,7 +235,7 @@ class GameBoard
         // Check if next player can move some stones
         if (Game.turn >= 17 && !this.GetStonesOnField(1 - Game.currentPlayer).some(s => s.isMoveable)) {
             // no moves possible anymore
-            Game.phase = 4;
+            Game.ShowWinnerScreen();
             return;
         }
         // Check if phase has to switch from placing to moving stones
@@ -228,6 +247,9 @@ class GameBoard
         Game.currentPlayer = 1 - Game.currentPlayer;
         this.activeStone = this.GetUnsettledStone(Game.currentPlayer); // returns null if no unsettled stones
         Game.turn++;
+
+        // Update stone and field properties
+        this.UpdateProperties();
 
         // Check if its AIs turn
         this.TryAIMove();
@@ -285,77 +307,5 @@ class GameBoard
      */
     static CurrentStateToNumber() : number {
         return this.gameFields.map((f, i) => Math.pow(3, i) * (f.owner ? (f.owner.color == 1 ? 2: 1) : 0)).reduce((a, b) => a + b, 0);
-    }
-
-    /**
-     * Draws the game board and stones on the canvas.
-     */
-    static Paint() : void {
-        var fieldLineWidth = Settings.fieldLineWidthFactor * this.fieldLength;
-        var stoneBorderWidth = Settings.stoneBorderWidthFactor * this.fieldLength;
-
-        var context = canvas.getContext('2d');
-
-        //  Draw connecting lines between game fields
-        for(var field of GameBoard.gameFields) {
-            var realPos = this.GetRealPosition(field.position);
-            // Only have to draw lines to right and bottom neighbors (left and top equivalents exist)
-            if (field.neighborRight) {
-                var realPosNeighbor = this.GetRealPosition(field.neighborRight.position);
-                PaintHelper.DrawLine(realPos.x, realPos.y,
-                    realPosNeighbor.x, realPosNeighbor.y,
-                    fieldLineWidth, Settings.fieldColor);
-            }
-            if (field.neighborBottom) {
-                var realPosNeighbor = this.GetRealPosition(field.neighborBottom.position);
-                PaintHelper.DrawLine(realPos.x, realPos.y,
-                    realPosNeighbor.x, realPosNeighbor.y,
-                    fieldLineWidth, Settings.fieldColor);
-            }
-        }
-        // Draw fields
-        for(var field of GameBoard.gameFields) {
-            field.Paint();
-        }
-        // Draw stones
-        for (var color of [0,1]) {
-            for (var stone of GameBoard.stones[color]) {
-                stone.Paint();
-            }
-        }
-    }
-
-    /**
-     * Returns the real position (in px) of a field position (typically integer values).
-     * The field position is measured in fieldLength starting at (0,0) at the center of the top left field.
-     * @param {Position2} intPos - The position on the game board.
-     * @returns {Position2} (in px) the position on the canvas.
-     */
-    static GetRealPosition(intPos : Position2) : Position2 {
-        var fieldLength = this.fieldLength;
-        var offsetX = (canvas.width - fieldLength * 7) / 2;
-        var offsetY = (canvas.height - fieldLength * 7) / 2;
-        
-        return {x: offsetX + (intPos.x + 0.5) * fieldLength, 
-                y: offsetY + (intPos.y + 0.5) * fieldLength};
-    }
-    /**
-     * Inverse function of GetRealPosition().
-     * @param {Position2} realPos - (in px) The position on the canvas.
-     * @returns {Position2} the position on the game board in whole numbers.
-     */
-    static getFieldPosition(realPos : Position2) : Position2 {
-        var fieldLength = this.fieldLength;
-        var offsetX = (canvas.width - fieldLength * 7) / 2;
-        var offsetY = (canvas.height - fieldLength * 7) / 2;
-        
-        return {x: Math.floor((realPos.x - offsetX) / fieldLength), 
-                y: Math.floor((realPos.y - offsetX) / fieldLength)};
-    }
-
-    /** The length of a game field. Many settings/figures are measured in this unit. */
-    static get fieldLength() : number {
-        // 9/7 as we need 9 fields horizontal including two columns for stones placed outside the field.
-        return Math.min(canvas.height / 7.0, canvas.width / 9.0);
     }
 }

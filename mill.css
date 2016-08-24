@@ -198,7 +198,7 @@ header button:active {
     vertical-align: text-bottom;
     position: relative;
     display: inline-block;
-    width: 8.824vmin; /* 60px; */
+    width: 9vmin;
     height: 5vmin;
 }
 .switch:focus  {
@@ -221,7 +221,7 @@ header button:active {
     background-color: transparent;
     -webkit-transition: .4s;
     transition: .4s;
-    border: 0.441vmin solid black; /* 3px */
+    border: 0.45vmin solid black; /* 3px */
     border-radius: 5vmin;
 }
 .slider:hover {
@@ -231,10 +231,10 @@ header button:active {
 .slider:before {
     position: absolute;
     content: "";
-    height: 3.824vmin; /* 26px; */
-    width: 3.824vmin;
-    left:  0.25vmin; /* 1px; */
-    bottom: 0.25vmin;
+    width: 3.5vmin;
+    left:  0.3vmin;
+    top: 0.3vmin;
+    bottom: 0.3vmin;
     background-color: black;
     -webkit-transition: transform .4s;
     transition: transform .4s;
@@ -246,19 +246,37 @@ input:checked + .slider {
 }
 
 input:checked + .slider:before {
-    -webkit-transform: translateX(3.824vmin);
-    -ms-transform: translateX(3.824vmin);
-    transform: translateX(3.824vmin);
+    -webkit-transform: translateX(4vmin);
+    -ms-transform: translateX(4vmin);
+    transform: translateX(4vmin);
 }
-#main {
-    z-index: -1;
-    width: 100vw;
-    bottom: 8vmin; /* 40px */
-    top: 8vmin; /* 60px */
-    margin:0;
-    padding:0;
-    position:absolute;
-    /* background-color: rgba(0,0,255,0.5); */
+
+#winnerScreen {
+    width: 90vmin;
+    height: 76vmin;
+    padding: 0;
+    border: none;
+    display: table;
+    overflow: hidden;
+    border-radius: 4vmin;
+    position: absolute;
+    background-color: rgba(255,255,255,0.85);
+    z-index: 5;
+
+    color: black;
+    font-family: 'Arial';
+    font-size: 4.6vmin;
+    text-align: center;
+    transition: 0.4s;
+}
+#winnerScreen div {
+    display: table-cell; 
+    vertical-align: middle;
+}
+#winnerScreen span {
+    font-weight: bold;
+    font-size: 8.5vmin;
+    text-transform: uppercase;
 }
 
 /* 10vmin fieldLength */
@@ -304,23 +322,35 @@ input:checked + .slider:before {
     background-color: #00aa00;
 }
 
-.stoneWhite {
+.stoneWhite,
+.stoneBlack {
     /* background-position needs to be set randomly between 0 and 8vmin */
     margin: -4.3vmin 0 0 -4.3vmin;
     padding: 0;
     width: 8vmin;
     height: 8vmin;
-    border: 0.3vmin solid black;
     border-radius: 50%;
-    background: url(pictures/marmor4s.jpg);
     background-repeat: repeat;
     z-index: 3;
 
     position: absolute;
     left: 50%;
     top: 50%;
-    transition: transform 1s;
-    transition-timing-function: ease-out;
+    transition: transform 0.4s ease-out, z-index 0.4s step-end;
+}
+.stoneWhite {
+    background: url(pictures/marmor4s.jpg);
+    border: 0.3vmin solid black;
+}
+.stoneBlack {
+    background: url(pictures/marmor3s.jpg);
+    border: 0.3vmin solid white;
+}
+.stoneMoveFast {
+    transition: transform 0.2s, z-index 0.2s step-end;
+}
+.stoneMoveInstant {
+    transition: transform 0s, z-index 0s;
 }
 .stoneMoveable {
     border: 0.6vmin solid #00ff00;
@@ -333,6 +363,7 @@ input:checked + .slider:before {
 .stoneActive {
     border: 0.6vmin solid #ff7700;
     margin: -4.6vmin 0 0 -4.6vmin;
+    z-index: 4;
 }
 .stoneActive:hover {
     border: 0.6vmin solid #ff7700;
