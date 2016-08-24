@@ -45,7 +45,59 @@
         </td></tr>
     </table>
 </div>
-<canvas id="myCanvas" width="500" height="400"></canvas>
+
+
+<div id="gameBoard"> <!-- game board -->
+    <!-- Stones -->
+    <div class="stoneWhite stoneRemoveable" style="transform: translate(-30vmin,-30vmin);"></div>
+    <div class="stoneWhite stoneMoveable" style="transform: translate(-30vmin,0vmin);"></div>
+    <div class="stoneWhite stoneActive" style="transform: translate(-20vmin,20vmin);"></div>
+    <div class="stoneWhite" style="transform: translate(30vmin,30vmin);"></div>
+    <!-- Create fields on board -->
+    <div class="field" style="transform: translate(-30vmin,-30vmin);"></div>
+    <div class="field fieldMoveable" style="transform: translate(  0vmin,-30vmin);"></div>
+    <div class="field" style="transform: translate( 30vmin,-30vmin);"></div>
+    <div class="field fieldMoveable" style="transform: translate(-20vmin,-20vmin);"></div>
+    <div class="field" style="transform: translate(  0vmin,-20vmin);"></div>
+    <div class="field fieldMoveable" style="transform: translate( 20vmin,-20vmin);"></div>
+    <div class="field" style="transform: translate(-10vmin,-10vmin);"></div>
+    <div class="field fieldMoveable" style="transform: translate(  0vmin,-10vmin);"></div>
+    <div class="field" style="transform: translate( 10vmin,-10vmin);"></div>
+    <div class="field" style="transform: translate(-30vmin,  0vmin);"></div>
+    <div class="field" style="transform: translate(-20vmin,  0vmin);"></div>
+    <div class="field" style="transform: translate(-10vmin,  0vmin);"></div>
+    <div class="field" style="transform: translate( 10vmin,  0vmin);"></div>
+    <div class="field" style="transform: translate( 20vmin,  0vmin);"></div>
+    <div class="field" style="transform: translate( 30vmin,  0vmin);"></div>
+    <div class="field" style="transform: translate(-10vmin, 10vmin);"></div>
+    <div class="field" style="transform: translate(  0vmin, 10vmin);"></div>
+    <div class="field" style="transform: translate( 10vmin, 10vmin);"></div>
+    <div class="field" style="transform: translate(-20vmin, 20vmin);"></div>
+    <div class="field" style="transform: translate(  0vmin, 20vmin);"></div>
+    <div class="field" style="transform: translate( 20vmin, 20vmin);"></div>
+    <div class="field" style="transform: translate(-30vmin, 30vmin);"></div>
+    <div class="field" style="transform: translate(  0vmin, 30vmin);"></div>
+    <div class="field" style="transform: translate( 30vmin, 30vmin);"></div>
+    <!-- Create lines of board -->
+    <div class="fieldLineHorizontal" style="width: 60vmin; transform: translate(-30vmin,-30vmin);"></div>
+    <div class="fieldLineHorizontal" style="width: 40vmin; transform: translate(-20vmin,-20vmin);"></div>
+    <div class="fieldLineHorizontal" style="width: 20vmin; transform: translate(-10vmin,-10vmin);"></div>
+    <div class="fieldLineHorizontal" style="width: 20vmin; transform: translate(-30vmin,  0vmin);"></div>
+    <div class="fieldLineHorizontal" style="width: 20vmin; transform: translate( 10vmin,  0vmin);"></div>
+    <div class="fieldLineHorizontal" style="width: 20vmin; transform: translate(-10vmin, 10vmin);"></div>
+    <div class="fieldLineHorizontal" style="width: 40vmin; transform: translate(-20vmin, 20vmin);"></div>
+    <div class="fieldLineHorizontal" style="width: 60vmin; transform: translate(-30vmin, 30vmin);"></div>
+    <div class="fieldLineVertical" style="height: 60vmin; transform: translate(-30vmin,-30vmin);"></div>
+    <div class="fieldLineVertical" style="height: 40vmin; transform: translate(-20vmin,-20vmin);"></div>
+    <div class="fieldLineVertical" style="height: 20vmin; transform: translate(-10vmin,-10vmin);"></div>
+    <div class="fieldLineVertical" style="height: 20vmin; transform: translate(  0vmin,-30vmin);"></div>
+    <div class="fieldLineVertical" style="height: 20vmin; transform: translate(  0vmin, 10vmin);"></div>
+    <div class="fieldLineVertical" style="height: 20vmin; transform: translate( 10vmin,-10vmin);"></div>
+    <div class="fieldLineVertical" style="height: 40vmin; transform: translate( 20vmin,-20vmin);"></div>
+    <div class="fieldLineVertical" style="height: 60vmin; transform: translate( 30vmin,-30vmin);"></div>
+</div>
+
+
 <footer>
     <p>© 2016 by fr34q</p>
 </footer>
