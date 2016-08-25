@@ -18,8 +18,6 @@ class GameNode {
     gameTurn : number;
     gamePhase : number;
 
-    lastMove : GameMove;
-
     /**
      *  Creates a class for storing a game state.
      */
@@ -40,7 +38,6 @@ class GameNode {
         node.currentPlayer = this.currentPlayer;
         node.gameTurn = this.gameTurn;
         node.gamePhase = this.gamePhase;
-        node.lastMove = this.lastMove;
         return node;
     }
 
@@ -65,19 +62,15 @@ class GameNode {
         return arr;
     }
 
-    GetPossibleMoves() : Array<GameNode> {
-        var arr = new Array<GameNode>();
+    GetPossibleMoves() : Array<GameMove> {
+        var arr = new Array<GameMove>();
         switch (this.gamePhase) {
             case 1: // placing stones
                 for (var i = 0; i < 24; i++) {
                     if(this.stones[0][i] || this.stones[1][i]) continue;
                     if (this.stones[0][i] || this.stones[1][i])
                         continue;
-                    var node = this.Clone();
-                    node.stones[this.currentPlayer][i] = true;
-                    node.lastMove = { phase: this.gamePhase, from: -1, to: i };
-                    node.IncrementAndUpdate(i);
-                    arr.push(node);
+                    arr.push({phase: this.gamePhase, from: -1, to: i });
                 }
                 break;
             case 2: // moving stones
@@ -87,22 +80,12 @@ class GameNode {
                         // can move on any free spot
                         for (var j = 0; j < 24; j++) {
                             if(this.stones[0][j] || this.stones[1][j]) continue;
-                            var node = this.Clone();
-                            node.stones[this.currentPlayer][i] = false;
-                            node.stones[this.currentPlayer][j] = true;
-                            node.lastMove = {phase: this.gamePhase, from: i, to: j};
-                            node.IncrementAndUpdate(i);
-                            arr.push(node);
+                            arr.push({phase: this.gamePhase, from: i, to: j});
                         }
                     } else {
                         for (var neighbor of GameNode.GetNeighbors(i)) {
                             if(this.stones[0][neighbor] || this.stones[1][neighbor]) continue;
-                            var node = this.Clone();
-                            node.stones[this.currentPlayer][i] = false;
-                            node.stones[this.currentPlayer][neighbor] = true;
-                            node.lastMove = {phase: this.gamePhase, from: i, to: neighbor};
-                            node.IncrementAndUpdate(i);
-                            arr.push(node);
+                            arr.push({phase: this.gamePhase, from: i, to: neighbor});
                         }
                     }
                 }
@@ -111,19 +94,92 @@ class GameNode {
                 for (var i = 0; i < 24; i++) {
                     if(!this.stones[1-this.currentPlayer][i]) continue;
                     if(this.CheckMill(i)) continue; // cannot delete stone in mill
-                    var node = this.Clone();
-                    node.stones[this.currentPlayer][i] = false;
-                    node.lastMove = {phase: this.gamePhase, from: i, to: -1};
-                    node.IncrementAndUpdate(i);
-                    arr.push(node);
+                    arr.push({phase: this.gamePhase, from: i, to: -1});
                 }
                 break;
         }
         return arr;
     }
 
+    PerformMove(move : GameMove) : boolean {
+        if(move.phase != this.gamePhase) {
+            console.error("[AI] move not fitting to current game node.")
+            return false;
+        }
+        switch(this.gamePhase) {
+            case 1: // placing stones
+                if (move.from != -1 || move.to == -1 || this.stones[0][move.to] || this.stones[1][move.to]) {
+                    console.error("[AI] game move has wrong values");
+                    return false;
+                }
+                this.stones[this.currentPlayer][move.to] = true;
+                this.IncrementAndUpdate(move.to);
+                break;
+            case 2: // moving stones
+                if (move.from == -1 || move.to == -1 || this.stones[0][move.to] || this.stones[1][move.to]
+                        || !this.stones[this.currentPlayer][move.from]) {
+                    console.error("[AI] game move has wrong values");
+                    return false;
+                }
+                this.stones[this.currentPlayer][move.from] = false;
+                this.stones[this.currentPlayer][move.to] = true;
+                this.IncrementAndUpdate(move.to);
+                break;
+            case 3: // removing stones
+                if (move.from == -1 || move.to != -1 || !this.stones[1-this.currentPlayer][move.from] || this.CheckMill(move.from)) {
+                    console.error("[AI] game move has wrong values");
+                    return false;
+                }
+                this.stones[1-this.currentPlayer][move.from] = false;
+                this.IncrementAndUpdate(move.from);
+                break;
+            default:
+                console.error("[AI] Move in game phase "+move.phase+" could not be performed.")
+                return false;
+        }
+        return true;
+    }
+    UndoMove(move : GameMove) : boolean {
+        var lastPlayer = this.gamePhase == 3 ? this.currentPlayer : 1-this.currentPlayer;
+
+        switch(move.phase) { 
+            case 1: // placing stones
+                if(move.from != -1 || move.to == -1 || !this.stones[lastPlayer][move.to]) {
+                    console.error("[AI] Move cannot be undone, wrong format. (1)");
+                    return false;
+                }
+                this.stones[lastPlayer][move.to] = false;
+                break;
+            case 2: // moving stones
+                if(move.from == -1 || move.to == -1 || !this.stones[lastPlayer][move.to]
+                        || this.stones[0][move.from] || this.stones[1][move.from]) {
+                    console.error("[AI] Move cannot be undone, wrong format. (2)");
+                    return false;
+                }
+                this.stones[lastPlayer][move.from] = true;
+                this.stones[lastPlayer][move.to] = false;
+                break;
+            case 3: // removing stones
+                if(move.from == -1 || move.to != -1 || this.stones[0][move.from] || this.stones[1][move.from]) {
+                    console.error("[AI] Move cannot be undone, wrong format. (3)");
+                    return false;
+                }
+                this.stones[1-lastPlayer][move.from] = true;
+                break;
+            default:
+                console.error("[AI] Move in game phase "+move.phase+" could not be undone.")
+                return false;
+        }
+        
+        // otherwise last game state was closing a mill -> no game turn decrement or player switch
+        if(this.gamePhase != 3) this.gameTurn--;
+        this.currentPlayer = lastPlayer;
+        this.gamePhase = move.phase;
+        return true;
+    }
+
     IncrementAndUpdate(fieldnum : number) : void {
-        if (this.CheckMill(fieldnum)) {
+        if (this.gamePhase != 3 && this.CheckMill(fieldnum)) {
             this.gamePhase = 3;
             // no game turn increment / player switch
             return;
@@ -131,7 +187,6 @@ class GameNode {
         this.gamePhase = (this.gameTurn < 17) ? 1 : 2;
         this.gameTurn++;
         this.currentPlayer = 1 - this.currentPlayer;
-
     }
 
     CheckMillHorizontal(fieldnum : number) : boolean {
@@ -173,9 +228,11 @@ class GameNode {
     }
 
     GetWinner() : number {
-        if(this.gamePhase == 3 && this.stones[1-this.currentPlayer].filter(b => b).length <= 3)
+        if(this.gamePhase == 3 && this.gameTurn > 17 && this.stones[1-this.currentPlayer].filter(b => b).length <= 3)
             return this.currentPlayer;
         if(this.gamePhase == 2) {
+            if (this.stones[this.currentPlayer].filter(b => b).length <= 3)
+                return -1; // player can jump
             // check if there are moveable stones left
             for (var i = 0; i < 24; i++) {
                 if (!this.stones[this.currentPlayer][i]) continue;
@@ -209,15 +266,16 @@ class GameNode {
         // winning configurations
         var winner = this.GetWinner();
         var criteria8 = (winner == -1) ? 0 : (winner == this.currentPlayer ? 1 : -1);
+
         
         if (this.gamePhase == 1 || (this.gamePhase == 3 && this.gameTurn < 18)) {
-            return 18 * criteria1 + 26 * criteria2 + 1 * criteria3 + 9 * criteria4 + 10 * criteria5 + 7 * criteria6;
+            return 100 * criteria1 + 26 * criteria2 + 1 * criteria3 + 9 * criteria4 + 10 * criteria5 + 7 * criteria6;
         }
         if (this.stones.some(a => a.filter(b => b).length <= 3)) {
-            return 16 * criteria1 + 10 * criteria5 + 1 * criteria6 + 1190 * criteria8;
+            return 300 * criteria1 + 10 * criteria5 + 1 * criteria6 + 500000 * criteria8;
         }
         if (this.gamePhase == 2 || (this.gamePhase == 3 && this.gameTurn >= 18)) {
-            return 14 * criteria1 + 43 * criteria2 + 10 * criteria3 + 11 * criteria4 + 8 * criteria7 + 1086 * criteria8;
+            return 500 * criteria1 + 43 * criteria2 + 10 * criteria3 + 11 * criteria4 + 8 * criteria7 + 500000 * criteria8;
         }
         console.error("[AI] Could not calculate score for game configuration...");
         return 0;
@@ -400,6 +458,11 @@ class GameNode {
         return this.stones[player].filter((b,i) => GameNode.GetNeighbors(i)
                 .every(n => this.stones[0][n] || this.stones[1][n])).length
     }
+
+    CurrentStateToNumber() : number {
+        return this.stones[0].map((b, i) => Math.pow(3, i) * (b ? 1 : 0)).reduce((a, b) => a + b, 0)
+                + this.stones[1].map((b, i) => Math.pow(3, i) * (b ? 2 : 0)).reduce((a, b) => a + b, 0);
+    }
 }
 
 
@@ -412,6 +475,11 @@ class EnemyAIMinimax implements EnemyAI {
     private startDepth : number = 4;
 
     private storedMove : GameMove;
+    private finished : boolean;
+    private startTime : number;
+    private timeUp : boolean;
+    private timoutHandler : number;
+    private hashForRepeat : boolean[];
 
     constructor(_color : number) {
         this.color = _color;
@@ -424,12 +492,27 @@ class EnemyAIMinimax implements EnemyAI {
             return false;
         }
 
-        // Wait the given time before executing actual move calculation
-        setTimeout(() => this.MakeMoveIntern(), Game.enemyAIRandomSleepTime);
+        // depth of search dependent on game phase (phase 1 has vast more possibilities)
+        switch(Game.phase) {
+            case 1: this.startDepth = 4; break;
+            case 2: this.startDepth = 4; break;
+            case 3: this.startDepth = 4; break;
+            default: this.startDepth = 4; break;
+        }
 
-        // Start alpha beta search:
-        this.storedMove = null;
-        var rating = this.AlphaBeta(GameNode.GetFromCurrentBoard(), this.startDepth, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY);
+
+        // Wait the given time before executing actual move calculation
+        // just wait shortly to give html time to render
+        setTimeout(() => {this.MakeMoveIntern();}, 50);
+
+        this.hashForRepeat = [];
+        this.finished = false;
+        this.timeUp = false;
+        this.startTime = Date.now();
+        this.timoutHandler = setTimeout(() => {this.timeUp = true;}, Game.enemyAIRandomSleepTime);
+    }
+
+    ExecuteMove() : void {
         if (this.storedMove == null) {
             console.error("[AI] No moves could be calculated! This should not have happened.");
         } else if (this.storedMove.phase == Game.phase) {
@@ -462,39 +545,79 @@ class EnemyAIMinimax implements EnemyAI {
     }
 
     MakeMoveIntern() : void {
-        console.log("[AI] Time is up alert!");
-        
+        //console.log("[AI] Time is up alert!");
+        // Start alpha beta search:
+        this.storedMove = null;
+        var rating = this.AlphaBeta(GameNode.GetFromCurrentBoard(), this.startDepth, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY);
+        clearTimeout(this.timoutHandler); // clear timeout so it will not be triggered during the next run
+        console.log("[AI] Found move with rating "+rating+".");
+        //console.log(this.storedMove);
+        this.finished = true;
+        console.log("[AI] "+(Date.now()-this.startTime)+"ms needed to calculate this move.");
+        this.ExecuteMove();
     } 
 
+    
     private AlphaBeta(node : GameNode, depth : number, alpha : number, beta : number) : number {
-        console.log("alpha: "+alpha+" ; beta: "+beta+" ; depth: "+depth);
+        //console.log("alpha: "+alpha+" ; beta: "+beta+" ; depth: "+depth);
         var winner = node.GetWinner();
-        if (winner != -1 || depth <= 0) {
+        //if (winner != -1) console.log("alpha: "+alpha+" ; beta: "+beta+" ; depth: "+depth + " ; winner: "+winner);
+        if (winner != -1 || depth <= 0 || this.timeUp) {
+            //console.log("winner: "+winner+" depth: "+depth+" timeUp: "+this.timeUp);
             return node.currentPlayer == this.color ? node.GetRating() : - node.GetRating();
         }
         
-        var children = node.GetPossibleMoves(); // generates children. also rates them and applies move to copy of field. 
+        var possibleMoves = node.GetPossibleMoves(); // generates children. also rates them and applies move to copy of field. 
         
+        // shortcut if winning in sight
+        if (depth == this.startDepth) for(var move of possibleMoves) {
+            node.PerformMove(move);
+            if (node.GetWinner() == this.color) {
+                console.log("[AI] Taking shortcut to win.")
+                this.storedMove = move;
+                return node.GetRating();
+            }
+            node.UndoMove(move);
+        }
+
+        // mix moves
+        // a bit randomness if moves equal so it is not fully deterministic
+        possibleMoves = this.shuffleArray(possibleMoves);
+
         if (node.currentPlayer == this.color) { // ai tries to maximize the score
             var maxValue = alpha;
-            for (var child of children) {
-                console.log(child.lastMove);
-                var value = this.AlphaBeta(child, depth-1, maxValue, beta);
+            for (var move of possibleMoves) {
+                //console.log(move);
+                node.PerformMove(move);
+                var currState = node.CurrentStateToNumber();
+                if (!GameBoard.hashForDraw[currState] && !this.hashForRepeat[currState]) {
+                    this.hashForRepeat[currState] = true;
+                    var value = this.AlphaBeta(node, depth-1, maxValue, beta);
+                    this.hashForRepeat = this.hashForRepeat.splice(currState,1);
+                } else {
+                    var value = maxValue;
+                    console.log("[AI] Skipping repeating move.");
+                }
+                node.UndoMove(move);
 
                 if (value > maxValue) {
                     maxValue = value;
                     if (maxValue >= beta) break; // cutoff
                     if (depth == this.startDepth) {
                         // save potential move
-                        this.storedMove = child.lastMove;
+                        this.storedMove = move;
                     }
                 }
             }
             return maxValue;
         } else { // enemy tries to minimize the score
             var minValue = beta;
-            for (var child of children) {
-                var value = this.AlphaBeta(child, depth - 1, alpha, minValue);
+            for (var move of possibleMoves) {
+                //console.log(move);
+                node.PerformMove(move);
+                var value = this.AlphaBeta(node, depth - 1, alpha, minValue);
+                node.UndoMove(move);
+
                 if (value < minValue) {
                     minValue = value;
                     if (minValue <= alpha) break; // cutoff
@@ -502,5 +625,19 @@ class EnemyAIMinimax implements EnemyAI {
             }
             return minValue;
         }
+    }
+
+    /**
+     * Randomize array element order in-place.
+     * Using Durstenfeld shuffle algorithm.
+     */
+    shuffleArray(array : Array<any>) : Array<any> {
+        for (var i = array.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var temp = array[i];
+            array[i] = array[j];
+            array[j] = temp;
+        }
+        return array;
     }
 }

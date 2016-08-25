@@ -31,7 +31,7 @@ class GameBoard
     private static lastTurnMill : number;
     // stores how often a specific board configuration was alreade placed
     // if one set of stone position is detected 3 times game is draw
-    private static hashForDraw : number[];
+    static hashForDraw : number[];
 
     /** 
      * Initializes/Resets the game board for a new game 
