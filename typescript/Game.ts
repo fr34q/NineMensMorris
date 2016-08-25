@@ -30,9 +30,9 @@ class Game {
     static Reset() : void {
         // Create new AI players
         if (Game.playerAI[0])
-            Game.playerAI[0] = new EnemyAIPrimitive(0);
+            Game.playerAI[0] = new EnemyAIMinimax(0);
         if (Game.playerAI[1])
-            Game.playerAI[1] = new EnemyAIPrimitive(1);
+            Game.playerAI[1] = new EnemyAIMinimax(1);
         Game.phase = 0; // menu
         Game.turn = 0;
         Game.currentPlayer = 1; // white
