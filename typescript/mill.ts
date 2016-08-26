@@ -17,7 +17,7 @@ let gameMenu : HTMLDivElement;
 let gameBoard : HTMLDivElement;
 let winnerScreen : HTMLDivElement;
 let winnerScreenText : HTMLSpanElement;
-let footer : HTMLElement;
+let footer : HTMLParagraphElement;
 
 /**
  * This function is called when page finished loading.
@@ -29,6 +29,13 @@ function onLoad() : void {
     winnerScreenText = <HTMLSpanElement> document.getElementById("winnerScreenText");
     footer = document.getElementsByTagName('footer')[0].getElementsByTagName('p')[0];
     Game.Reset();
+}
 
-    Game.AutoPlayStatistics(100); // NOT IN THE FINAL VERSION!
+// Close the dropdown menu if the user clicks outside of it
+window.onclick = function(event) {
+    if (!(<HTMLElement> event.target).matches('.dropbtn')) {
+        var dropdowns = document.getElementsByClassName("dropdown-content");
+        for (var i = 0; i < dropdowns.length; i++)
+            dropdowns[i].classList.remove('show');
+    }
 }

@@ -480,9 +480,12 @@ var GameNode = (function () {
  * Stupid AI implementation using random selection among all possibilities.
  */
 var EnemyAIMinimax = (function () {
-    function EnemyAIMinimax(_color) {
+    function EnemyAIMinimax(_color, _respectLimit) {
         this.startDepth = 4;
+        this.respectLimit = true;
         this.color = _color;
+        if (_respectLimit != null)
+            this.respectLimit = _respectLimit;
     }
     EnemyAIMinimax.prototype.MakeMove = function () {
         var _this = this;
@@ -491,23 +494,12 @@ var EnemyAIMinimax = (function () {
             console.error("[AI] Current player is not AI.");
             return false;
         }
-        // depth of search dependent on game phase (phase 1 has vast more possibilities)
-        /*
-        switch(Game.phase) {
-            case 1: this.startDepth = 4; break;
-            case 2: this.startDepth = 4; break;
-            case 3: this.startDepth = 4; break;
-            default: this.startDepth = 4; break;
-        }
-        */
-        this.startDepth = 2;
+        this.hashForRepeat = [];
+        this.timeUp = false;
+        this.storedMove = null;
         // Wait the given time before executing actual move calculation
         // just wait shortly to give html time to render
         setTimeout(function () { _this.MakeMoveIntern(); }, 50);
-        this.hashForRepeat = [];
-        this.finished = false;
-        this.timeUp = false;
-        this.startTime = Date.now();
     };
     EnemyAIMinimax.prototype.ExecuteMove = function () {
         if (this.storedMove == null) {
@@ -549,23 +541,36 @@ var EnemyAIMinimax = (function () {
         }
     };
     EnemyAIMinimax.prototype.MakeMoveIntern = function () {
-        //console.log("[AI] Time is up alert!");
+        var _this = this;
+        this.startTime = Date.now();
         // Start alpha beta search:
-        this.storedMove = null;
         var rating = this.AlphaBeta(GameNode.GetFromCurrentBoard(), this.startDepth, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY);
-        console.log("[AI] Found move with rating " + rating + ".");
-        //console.log(this.storedMove);
-        this.finished = true;
-        console.log("[AI] " + (Date.now() - this.startTime) + "ms needed to calculate this move.");
-        this.ExecuteMove();
+        //console.log("[AI] Found move with rating "+rating+".");
+        //console.log("[AI] "+(Date.now()-this.startTime)+"ms needed to calculate this move.");
+        // AI has 500ms to move, for neater animations it will consume this time completely
+        var remainingTime = Game.aiDecisionTime - (Date.now() - this.startTime);
+        if (remainingTime > 10) {
+            setTimeout(function () { return _this.ExecuteMove(); }, remainingTime);
+        }
+        else {
+            this.ExecuteMove();
+        }
     };
     EnemyAIMinimax.prototype.AlphaBeta = function (node, depth, alpha, beta) {
         //console.log("alpha: "+alpha+" ; beta: "+beta+" ; depth: "+depth);
         var winner = node.GetWinner();
         //if (winner != -1) console.log("alpha: "+alpha+" ; beta: "+beta+" ; depth: "+depth + " ; winner: "+winner);
-        if (winner != -1 || depth <= 0 || Date.now() - this.startTime > Game.enemyAIRandomSleepTime) {
+        if (winner != -1 || depth <= 0
+            || (this.respectLimit && Date.now() - this.startTime > Game.aiDecisionTime)) {
             //console.log("winner: "+winner+" depth: "+depth+" timeUp: "+this.timeUp);
-            return node.GetRating(this.color);
+            // extra punishment if move causes the enemy to win.
+            // it is bad to loose, but it is worse if our next move makes enemy win possible...
+            // (cannot put this in GetRating() as depth and this.startDepth not accessible there)
+            // second part of condition is for the case that we can take a stone (enemy will only get to move at turn 3 then)
+            var punishment = ((winner == 1 - this.color && (depth == this.startDepth - 2
+                || (depth == this.startDepth - 3 && node.currentPlayer != this.color))) ? 1 : 0);
+            return node.GetRating(this.color)
+                - 500000 * punishment;
         }
         var possibleMoves = node.GetPossibleMoves(); // generates children. also rates them and applies move to copy of field. 
         // shortcut if winning in sight
@@ -662,7 +667,7 @@ var EnemyAIRandom = (function () {
         }
         // Wait the given time before executing actual move calculation
         var currAI = this;
-        setTimeout(function () { currAI.MakeMoveIntern(); }, 5); //Game.enemyAIRandomSleepTime);
+        setTimeout(function () { currAI.MakeMoveIntern(); }, Game.aiDecisionTime);
     };
     EnemyAIRandom.prototype.MakeMoveIntern = function () {
         switch (Game.phase) {
@@ -964,10 +969,7 @@ var Game = (function () {
      */
     Game.Reset = function () {
         // Create new AI players
-        if (Game.playerAI[0])
-            Game.playerAI[0] = new EnemyAIPrimitive(0);
-        if (Game.playerAI[1])
-            Game.playerAI[1] = new EnemyAIMinimax(1);
+        this.InitializeAIs();
         Game.phase = 0; // menu
         Game.turn = 0;
         Game.currentPlayer = 1; // white
@@ -991,30 +993,75 @@ var Game = (function () {
         winnerScreenText.innerText = "Game is drawn!";
         winnerScreen.style.display = 'table';
     };
-    Game.AutoPlayStatistics = function (totalStop) {
+    /**
+     * Initializes Statistics Mode where game restarts automatically
+     * and winners will be counted and displayed in the footer.
+     */
+    Game.StartStatMode = function () {
+        this.countWin = [0, 0];
+        this.countDraw = 0;
+        this.AutoPlayStatistics();
+    };
+    /**
+     * Checks in Stat Mode if game ended and if so logs it and restarts.
+     */
+    Game.AutoPlayStatistics = function () {
         var _this = this;
         if (Game.phase == 4 || Game.phase == 5) {
             if (Game.phase == 4)
                 this.countWin[Game.currentPlayer]++;
             else
                 this.countDraw++;
-            var infoText = "W: " + this.countWin[1] + " - B: " + this.countWin[0] + " - D: "
-                + this.countDraw + " => T: " + (this.countWin[0] + this.countWin[1] + this.countDraw);
+            var infoText = "White: " + this.countWin[1]
+                + " - Black: " + this.countWin[0]
+                + " - Draw: " + this.countDraw
+                + " (Total: " + (this.countWin[0] + this.countWin[1] + this.countDraw) + ")";
             console.info(infoText);
             footer.innerHTML = infoText;
-            if (totalStop != null && (this.countWin[0] + this.countWin[1] + this.countDraw) >= totalStop)
-                return; // No new game and further listening
-            Menu.StartGame();
+            Game.Start();
+            winnerScreen.style.display = 'none';
         }
-        if (totalStop != null)
-            setTimeout(function () { return _this.AutoPlayStatistics(totalStop); }, 100);
-        else
-            setTimeout(function () { return _this.AutoPlayStatistics(); }, 100);
+        else if (Game.phase == 0) {
+            return; // no new call to function (menu interrupts)
+        }
+        setTimeout(function () { return _this.AutoPlayStatistics(); }, 100);
     };
+    /**
+     * Initializes the player AIs according to playerAINumber.
+     */
+    Game.InitializeAIs = function () {
+        var _this = this;
+        [0, 1].forEach(function (color) {
+            switch (_this.playerAINumber[color]) {
+                case 1:
+                    Game.playerAI[color] = new EnemyAIRandom(color);
+                    break;
+                case 2:
+                    Game.playerAI[color] = new EnemyAIPrimitive(color);
+                    break;
+                case 3:
+                    Game.playerAI[color] = new EnemyAIMinimax(color, true);
+                    break;
+                case 4:
+                    Game.playerAI[color] = new EnemyAIMinimax(color, false);
+                    break;
+                default:
+                    Game.playerAI[color] = null;
+                    break;
+            }
+        });
+    };
+    /**
+     * Numbers describing the type of AI for each player.
+     * 0: Human, 1: Random, 2: Easy, 3: Medium, 4: Hard
+     */
+    Game.playerAINumber = [0, 0];
     /** Set if a player is played by computer */
     Game.playerAI = [null, null];
-    /** How long AI will sleep before deciding its next move */
-    Game.enemyAIRandomSleepTime = 500; // ms
+    /** How long AI will sleep/calculate before deciding its next move */
+    Game.aiDecisionTime = 500; // ms
+    /** Turns statistics mode on or off */
+    Game.statMode = false;
     Game.countWin = [0, 0];
     Game.countDraw = 0;
     return Game;
@@ -1462,11 +1509,11 @@ var GameStone = (function () {
         this._element = document.createElement('div');
         this.position = position; // after creating the div element we can set the position
         this._element.setAttribute('class', color == 1 ? 'stoneWhite' : 'stoneBlack');
-        if (Game.enemyAIRandomSleepTime <= 200) {
+        if (Game.aiDecisionTime <= 200) {
             // instant transition moving stones
             this._element.classList.add("stoneMoveInstant");
         }
-        else if (Game.enemyAIRandomSleepTime <= 400) {
+        else if (Game.aiDecisionTime <= 400) {
             // fast transition
             this._element.classList.add("stoneMoveFast");
         }
@@ -1649,6 +1696,14 @@ var Menu = (function () {
         gameMenu.style.display = 'none';
         gameBoard.style.display = 'block';
         winnerScreen.style.display = 'none';
+        // initializing statistics mode
+        if (Game.statMode) {
+            Game.StartStatMode();
+            footer.innerHTML = "Statistics Mode - Auto Restart and Result Logging enabled.";
+        }
+        else {
+            footer.innerHTML = "Enjoy the game!";
+        }
     };
     /**
      * Reset game and show menu.
@@ -1664,50 +1719,83 @@ var Menu = (function () {
      */
     Menu.ReadSettings = function () {
         // get input elements from the menu
-        var checkboxWhite = document.getElementById('whiteAI');
-        var checkboxBlack = document.getElementById('blackAI');
-        var inputAITime = document.getElementById('AItime');
-        if (!checkboxWhite || !checkboxBlack || !inputAITime) {
+        var checkboxStatMode = document.getElementById('statMode');
+        if (!checkboxStatMode) {
             console.error("Could not find all menu elements!");
             return;
         }
-        if (checkboxWhite.checked) {
-            // White is played by AI
-            if (!Game.playerAI[1])
-                Game.playerAI[1] = new EnemyAIPrimitive(1);
-        }
-        else {
-            Game.playerAI[1] = null;
-        }
-        if (checkboxBlack.checked) {
-            // Black is played by AI
-            if (!Game.playerAI[0])
-                Game.playerAI[0] = new EnemyAIPrimitive(0);
-        }
-        else {
-            Game.playerAI[0] = null;
-        }
-        var time = Number(inputAITime.value);
-        if (!isNaN(time)) {
-            if (time < 0) {
-                inputAITime.value = "0";
-                time = 0;
-            }
-            else if (time > 9999) {
-                inputAITime.value = "9999";
-                time = 9999;
-            }
-            else if (Math.floor(time) != time) {
-                inputAITime.value = Math.floor(time).toString();
-                time = Math.floor(time);
-            }
-            Game.enemyAIRandomSleepTime = time;
-        }
-        else {
-            // no valid number -> reset field
-            inputAITime.value = "";
+        Game.statMode = checkboxStatMode.checked;
+        if (Game.statMode && this.statModeFirstEnabled) {
+            this.statModeFirstEnabled = false;
+            Menu.ShowInfoOverlay("Statistics Mode is thought for long term probing of game results between " +
+                "two AI players. Game will automatically restart and results are logged " +
+                "and displayed in the footer. Stat Mode can be interrupted by going to the menu.");
         }
     };
+    /**
+     * Called by AI select dropdown, sets the AI for a specified color.
+     * @param {number} color - The color for which the AI is altered.
+     * @param {number} aiNum - Number describing which AI should be set.
+     * @param {HTMLLinkElement} elem - Element that was clicked.
+     */
+    Menu.SetPlayerAI = function (color, aiNum, elem) {
+        if (color != 0 && color != 1)
+            return; // iput invalid
+        switch (aiNum) {
+            case 0: // playerAI
+            case 1: // random
+            case 2: // easy
+            case 3: // middle
+            case 4:
+                break;
+            default:
+                return; // not a valid input
+        }
+        Game.playerAINumber[color] = aiNum;
+        [
+            document.getElementById('blackAI'),
+            document.getElementById('whiteAI')
+        ][color].innerHTML = elem.innerHTML;
+    };
+    /**
+     * Triggered if clicked on button to toggle dropdown list.
+     * @param {HTMLButtonElement} elem - The element clicked on.
+     */
+    Menu.ToggleDropdown = function (elem) {
+        var content = elem.nextElementSibling;
+        if (content) {
+            content.classList.toggle("show");
+            // make all others disappear:
+            var dropdowns = document.getElementsByClassName("dropdown-content");
+            for (var i = 0; i < dropdowns.length; i++) {
+                if (dropdowns[i] != content) {
+                    dropdowns[i].classList.remove('show');
+                }
+            }
+        }
+        else {
+            console.error("Dropdown content could not be found.");
+        }
+    };
+    /**
+     * Shows an information overlay with given text.
+     * @param {string} text - The text to print on the screen.
+     */
+    Menu.ShowInfoOverlay = function (text) {
+        var disp = document.getElementById('infoOverlay');
+        disp.getElementsByTagName('p')[0]
+            .innerHTML = text;
+        disp.style.display = 'table';
+    };
+    /**
+     * Hides the information overlay.
+     */
+    Menu.HideInfoOverlay = function () {
+        document.getElementById('infoOverlay')
+            .style.display = 'none';
+    };
+    /** If stat mode was never enabled before. For displaying infoOverlay. */
+    Menu.statModeFirstEnabled = true;
     return Menu;
 }());
 /**
@@ -1732,6 +1820,13 @@ function onLoad() {
     winnerScreenText = document.getElementById("winnerScreenText");
     footer = document.getElementsByTagName('footer')[0].getElementsByTagName('p')[0];
     Game.Reset();
-    Game.AutoPlayStatistics(100); // NOT IN THE FINAL VERSION!
 }
+// Close the dropdown menu if the user clicks outside of it
+window.onclick = function (event) {
+    if (!event.target.matches('.dropbtn')) {
+        var dropdowns = document.getElementsByClassName("dropdown-content");
+        for (var i = 0; i < dropdowns.length; i++)
+            dropdowns[i].classList.remove('show');
+    }
+};
 //# sourceMappingURL=mill.js.map

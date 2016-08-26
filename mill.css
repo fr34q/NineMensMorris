@@ -279,6 +279,39 @@ input:checked + .slider:before {
     text-transform: uppercase;
 }
 
+#infoOverlay {
+    margin: 0 0 -0.4vmin -0.4vmin;
+    padding: 0;
+    width:90.8vmin;
+    height: 76.8vmin;
+    border: none;
+    display: table;
+    overflow: hidden;
+    border-radius: 4.2vmin;
+    position: absolute;
+    background-color: rgba(0,0,0,0.8);
+    z-index: 5;
+    display: none;
+
+    color: white;
+    font-family: 'Arial';
+    font-size: 4.6vmin;
+    text-align: center;
+    transition: 0.4s;
+}
+#infoOverlay div {
+    display: table-cell; 
+    vertical-align: middle;
+}
+#infoOverlay span {
+    font-weight: bold;
+    font-size: 8.5vmin;
+    text-transform: uppercase;
+}
+#infoOverlay p {
+    margin: 8vmin;
+}
+
 /* 10vmin fieldLength */
 
 .fieldLineHorizontal {
@@ -375,3 +408,47 @@ input:checked + .slider:before {
 .stoneRemoveable:hover {
     border: 0.6vmin solid #ff7777;
 }
+
+
+.dropbtn {
+    min-width: 28vmin;
+}
+
+/* The container <div> - needed to position the dropdown content */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdownButtonShow {
+    background-color: rgba(238, 154, 77, 1);
+}
+
+/* Dropdown Content (Hidden by Default) */
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: rgba(238, 154, 77, 1);
+    width: 100%;
+    border-radius: 1.471vmin;
+    z-index: 1;
+}
+
+/* Links inside the dropdown */
+.dropdown-content a {
+    color: black;
+    padding: 0.5vmin;
+    text-decoration: none;
+    font-weight: normal;
+    display: block;
+    border-radius: 1.471vmin;
+    cursor: pointer;
+}
+
+/* Change color of dropdown links on hover */
+.dropdown-content a:hover {
+    background-color: rgba(255, 255, 255, 0.3); /* lightens up background */
+    }
+
+/* Show the dropdown menu (use JS to add this class to the .dropdown-content container when the user clicks on the dropdown button) */
+.show {display:block;}

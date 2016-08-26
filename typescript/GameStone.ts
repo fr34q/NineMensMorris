@@ -124,11 +124,11 @@ class GameStone
         this._element = document.createElement('div');
         this.position = position; // after creating the div element we can set the position
         this._element.setAttribute('class', color==1 ? 'stoneWhite' : 'stoneBlack');
-        if (Game.enemyAIRandomSleepTime <= 200) {
+        if (Game.aiDecisionTime <= 200) {
             // instant transition moving stones
             this._element.classList.add("stoneMoveInstant");
             
-        } else if (Game.enemyAIRandomSleepTime <= 400) {
+        } else if (Game.aiDecisionTime <= 400) {
             // fast transition
             this._element.classList.add("stoneMoveFast");
         }

@@ -8,10 +8,17 @@ class Game {
     static turn : number;
     /** Current player */
     static currentPlayer : number;
+    /** 
+     * Numbers describing the type of AI for each player.
+     * 0: Human, 1: Random, 2: Easy, 3: Medium, 4: Hard
+     */
+    static playerAINumber : number[] = [0,0];
     /** Set if a player is played by computer */
     static playerAI : Array<EnemyAI> = [null, null];
-    /** How long AI will sleep before deciding its next move */
-    static enemyAIRandomSleepTime = 500; // ms
+    /** How long AI will sleep/calculate before deciding its next move */
+    static aiDecisionTime : number = 500; // ms
+    /** Turns statistics mode on or off */
+    static statMode : boolean = false;
     
     /**
      * Reset and start new game.
@@ -29,10 +36,7 @@ class Game {
      */
     static Reset() : void {
         // Create new AI players
-        if (Game.playerAI[0])
-            Game.playerAI[0] = new EnemyAIPrimitive(0);
-        if (Game.playerAI[1])
-            Game.playerAI[1] = new EnemyAIMinimax(1);
+        this.InitializeAIs();
         Game.phase = 0; // menu
         Game.turn = 0;
         Game.currentPlayer = 1; // white
@@ -61,22 +65,57 @@ class Game {
 
     private static countWin : number[] = [0,0];
     private static countDraw : number = 0;
-    static AutoPlayStatistics(totalStop? : number) : void {
+    /**
+     * Initializes Statistics Mode where game restarts automatically
+     * and winners will be counted and displayed in the footer.
+     */
+    static StartStatMode() : void {
+        this.countWin = [0,0];
+        this.countDraw = 0;
+        this.AutoPlayStatistics();
+    }
+    /**
+     * Checks in Stat Mode if game ended and if so logs it and restarts.
+     */
+    static AutoPlayStatistics() : void {
         if (Game.phase == 4 || Game.phase == 5) {
             if (Game.phase == 4) this.countWin[Game.currentPlayer]++;
             else this.countDraw++;
-            var infoText = "W: "+this.countWin[1]+" - B: "+this.countWin[0]+" - D: "
-                    +this.countDraw+" => T: "+(this.countWin[0]+this.countWin[1]+this.countDraw);
+            var infoText = "White: " + this.countWin[1]
+                    + " - Black: " + this.countWin[0] 
+                    + " - Draw: " + this.countDraw
+                    + " (Total: " + (this.countWin[0]+this.countWin[1]+this.countDraw) + ")";
             console.info(infoText);
             footer.innerHTML = infoText;
-            if(totalStop != null && (this.countWin[0]+this.countWin[1]+this.countDraw) >= totalStop)
-                return; // No new game and further listening
-            Menu.StartGame();
+            Game.Start();
+            winnerScreen.style.display = 'none';
+        } else if (Game.phase == 0) {
+            return; // no new call to function (menu interrupts)
         }
-        if (totalStop != null)
-            setTimeout(() => this.AutoPlayStatistics(totalStop), 100);
-        else
-            setTimeout(() => this.AutoPlayStatistics(), 100);
+        setTimeout(() => this.AutoPlayStatistics(), 100);
     }
-
+    /**
+     * Initializes the player AIs according to playerAINumber.
+     */
+    static InitializeAIs() : void {
+        [0,1].forEach(color => {
+            switch(this.playerAINumber[color]) {
+                case 1: // random
+                    Game.playerAI[color] = new EnemyAIRandom(color);
+                    break;
+                case 2: // easy
+                    Game.playerAI[color] = new EnemyAIPrimitive(color);
+                    break;
+                case 3: // middle
+                    Game.playerAI[color] = new EnemyAIMinimax(color, true);
+                    break;
+                case 4: // hard
+                    Game.playerAI[color] = new EnemyAIMinimax(color, false);
+                    break;
+                default: // human
+                    Game.playerAI[color] = null;
+                    break;
+            }
+        });
+    }
 }

@@ -472,16 +472,18 @@ class EnemyAIMinimax implements EnemyAI {
     color : number;
 
     private startDepth : number = 4;
+    private respectLimit : boolean = true;
 
     private storedMove : GameMove;
-    private finished : boolean;
     private startTime : number;
     private timeUp : boolean;
     private timoutHandler : number;
     private hashForRepeat : boolean[];
 
-    constructor(_color : number) {
+    constructor(_color : number, _respectLimit? : boolean) {
         this.color = _color;
+        if (_respectLimit != null)
+            this.respectLimit = _respectLimit;
     }
 
     MakeMove() : boolean {
@@ -491,26 +493,13 @@ class EnemyAIMinimax implements EnemyAI {
             return false;
         }
 
-        // depth of search dependent on game phase (phase 1 has vast more possibilities)
-        /*
-        switch(Game.phase) {
-            case 1: this.startDepth = 4; break;
-            case 2: this.startDepth = 4; break;
-            case 3: this.startDepth = 4; break;
-            default: this.startDepth = 4; break;
-        }
-        */
-        this.startDepth = 2;
-
+        this.hashForRepeat = [];
+        this.timeUp = false;
+        this.storedMove = null;
 
         // Wait the given time before executing actual move calculation
         // just wait shortly to give html time to render
         setTimeout(() => {this.MakeMoveIntern();}, 50);
-
-        this.hashForRepeat = [];
-        this.finished = false;
-        this.timeUp = false;
-        this.startTime = Date.now();
     }
 
     ExecuteMove() : void {
@@ -553,15 +542,19 @@ class EnemyAIMinimax implements EnemyAI {
     }
 
     MakeMoveIntern() : void {
-        //console.log("[AI] Time is up alert!");
+        this.startTime = Date.now();
         // Start alpha beta search:
-        this.storedMove = null;
         var rating = this.AlphaBeta(GameNode.GetFromCurrentBoard(), this.startDepth, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY);
-        console.log("[AI] Found move with rating "+rating+".");
-        //console.log(this.storedMove);
-        this.finished = true;
-        console.log("[AI] "+(Date.now()-this.startTime)+"ms needed to calculate this move.");
-        this.ExecuteMove();
+        //console.log("[AI] Found move with rating "+rating+".");
+        //console.log("[AI] "+(Date.now()-this.startTime)+"ms needed to calculate this move.");
+        
+        // AI has 500ms to move, for neater animations it will consume this time completely
+        var remainingTime = Game.aiDecisionTime - (Date.now()-this.startTime);
+        if (remainingTime > 10) {
+            setTimeout(() => this.ExecuteMove(), remainingTime);
+        } else {
+            this.ExecuteMove();
+        }
     } 
 
     
@@ -569,9 +562,18 @@ class EnemyAIMinimax implements EnemyAI {
         //console.log("alpha: "+alpha+" ; beta: "+beta+" ; depth: "+depth);
         var winner = node.GetWinner();
         //if (winner != -1) console.log("alpha: "+alpha+" ; beta: "+beta+" ; depth: "+depth + " ; winner: "+winner);
-        if (winner != -1 || depth <= 0 || Date.now()-this.startTime > Game.enemyAIRandomSleepTime) {
+        if (winner != -1 || depth <= 0 
+                || (this.respectLimit && Date.now()-this.startTime > Game.aiDecisionTime)) {
             //console.log("winner: "+winner+" depth: "+depth+" timeUp: "+this.timeUp);
-            return node.GetRating(this.color);
+            // extra punishment if move causes the enemy to win.
+            // it is bad to loose, but it is worse if our next move makes enemy win possible...
+            // (cannot put this in GetRating() as depth and this.startDepth not accessible there)
+            // second part of condition is for the case that we can take a stone (enemy will only get to move at turn 3 then)
+            var punishment = ((winner == 1-this.color  && (depth == this.startDepth-2
+                    || (depth == this.startDepth-3 && node.currentPlayer != this.color))) ? 1 : 0)
+            
+            return node.GetRating(this.color) 
+                    - 500000 * punishment;
         }
         
         var possibleMoves = node.GetPossibleMoves(); // generates children. also rates them and applies move to copy of field. 
