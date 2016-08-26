@@ -58,4 +58,25 @@ class Game {
         winnerScreenText.innerText = "Game is drawn!";
         winnerScreen.style.display = 'table';
     }
+
+    private static countWin : number[] = [0,0];
+    private static countDraw : number = 0;
+    static AutoPlayStatistics(totalStop? : number) : void {
+        if (Game.phase == 4 || Game.phase == 5) {
+            if (Game.phase == 4) this.countWin[Game.currentPlayer]++;
+            else this.countDraw++;
+            var infoText = "W: "+this.countWin[1]+" - B: "+this.countWin[0]+" - D: "
+                    +this.countDraw+" => T: "+(this.countWin[0]+this.countWin[1]+this.countDraw);
+            console.info(infoText);
+            footer.innerHTML = infoText;
+            if(totalStop != null && (this.countWin[0]+this.countWin[1]+this.countDraw) >= totalStop)
+                return; // No new game and further listening
+            Menu.StartGame();
+        }
+        if (totalStop != null)
+            setTimeout(() => this.AutoPlayStatistics(totalStop), 100);
+        else
+            setTimeout(() => this.AutoPlayStatistics(), 100);
+    }
+
 }

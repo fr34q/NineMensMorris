@@ -17,6 +17,7 @@ let gameMenu : HTMLDivElement;
 let gameBoard : HTMLDivElement;
 let winnerScreen : HTMLDivElement;
 let winnerScreenText : HTMLSpanElement;
+let footer : HTMLElement;
 
 /**
  * This function is called when page finished loading.
@@ -26,6 +27,8 @@ function onLoad() : void {
     gameBoard = <HTMLDivElement> document.getElementById("gameBoard");
     winnerScreen = <HTMLDivElement> document.getElementById("winnerScreen");
     winnerScreenText = <HTMLSpanElement> document.getElementById("winnerScreenText");
-
+    footer = document.getElementsByTagName('footer')[0].getElementsByTagName('p')[0];
     Game.Reset();
+
+    Game.AutoPlayStatistics(100); // NOT IN THE FINAL VERSION!
 }

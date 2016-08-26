@@ -64,6 +64,7 @@ class GameNode {
 
     GetPossibleMoves() : Array<GameMove> {
         var arr = new Array<GameMove>();
+        if (this.GetWinner() != -1) return arr; // game ended -> no more moves
         switch (this.gamePhase) {
             case 1: // placing stones
                 for (var i = 0; i < 24; i++) {
@@ -244,7 +245,7 @@ class GameNode {
         return -1;
     }
 
-    GetRating() : number {
+    GetRating(color: number) : number {
         // Rating procedure follows roughly:
         // https://kartikkukreja.wordpress.com/2014/03/17/heuristicevaluation-function-for-nine-mens-morris/
 
@@ -267,18 +268,16 @@ class GameNode {
         var winner = this.GetWinner();
         var criteria8 = (winner == -1) ? 0 : (winner == this.currentPlayer ? 1 : -1);
 
-        
+        var rating = 0;
         if (this.gamePhase == 1 || (this.gamePhase == 3 && this.gameTurn < 18)) {
-            return 100 * criteria1 + 26 * criteria2 + 1 * criteria3 + 9 * criteria4 + 10 * criteria5 + 7 * criteria6;
+            rating = 100 * criteria1 + 26 * criteria2 + 1 * criteria3 + 9 * criteria4 + 10 * criteria5 + 7 * criteria6;
+        } else if (this.stones.some(a => a.filter(b => b).length <= 3)) {
+            rating = 300 * criteria1 + 10 * criteria5 + 1 * criteria6 + 500000 * criteria8;
+        }else if (this.gamePhase == 2 || (this.gamePhase == 3 && this.gameTurn >= 18)) {
+            rating = 500 * criteria1 + 43 * criteria2 + 10 * criteria3 + 11 * criteria4 + 8 * criteria7 + 500000 * criteria8;
         }
-        if (this.stones.some(a => a.filter(b => b).length <= 3)) {
-            return 300 * criteria1 + 10 * criteria5 + 1 * criteria6 + 500000 * criteria8;
-        }
-        if (this.gamePhase == 2 || (this.gamePhase == 3 && this.gameTurn >= 18)) {
-            return 500 * criteria1 + 43 * criteria2 + 10 * criteria3 + 11 * criteria4 + 8 * criteria7 + 500000 * criteria8;
-        }
-        console.error("[AI] Could not calculate score for game configuration...");
-        return 0;
+        rating *= color == this.currentPlayer ? 1 : -1;
+        return rating;
     }
 
     NumberOfTwoPieceConfs(player : number) : number {
@@ -493,12 +492,15 @@ class EnemyAIMinimax implements EnemyAI {
         }
 
         // depth of search dependent on game phase (phase 1 has vast more possibilities)
+        /*
         switch(Game.phase) {
             case 1: this.startDepth = 4; break;
             case 2: this.startDepth = 4; break;
             case 3: this.startDepth = 4; break;
             default: this.startDepth = 4; break;
         }
+        */
+        this.startDepth = 2;
 
 
         // Wait the given time before executing actual move calculation
@@ -509,13 +511,19 @@ class EnemyAIMinimax implements EnemyAI {
         this.finished = false;
         this.timeUp = false;
         this.startTime = Date.now();
-        this.timoutHandler = setTimeout(() => {this.timeUp = true;}, Game.enemyAIRandomSleepTime);
     }
 
     ExecuteMove() : void {
         if (this.storedMove == null) {
-            console.error("[AI] No moves could be calculated! This should not have happened.");
-        } else if (this.storedMove.phase == Game.phase) {
+            console.error("[AI] No moves could be calculated! Making random decision.");
+            var possibleMoves = GameNode.GetFromCurrentBoard().GetPossibleMoves();
+            if (possibleMoves.length < 1) {
+                console.error("[AI] No possible moves found...");
+                return;
+            }
+            this.storedMove = possibleMoves[Math.floor(Math.random()*possibleMoves.length)];
+        }
+        if (this.storedMove.phase == Game.phase) {
             switch (Game.phase) {
                 case 1: // place stones
                     if (this.storedMove.from == -1 && this.storedMove.to != -1)
@@ -549,7 +557,6 @@ class EnemyAIMinimax implements EnemyAI {
         // Start alpha beta search:
         this.storedMove = null;
         var rating = this.AlphaBeta(GameNode.GetFromCurrentBoard(), this.startDepth, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY);
-        clearTimeout(this.timoutHandler); // clear timeout so it will not be triggered during the next run
         console.log("[AI] Found move with rating "+rating+".");
         //console.log(this.storedMove);
         this.finished = true;
@@ -562,9 +569,9 @@ class EnemyAIMinimax implements EnemyAI {
         //console.log("alpha: "+alpha+" ; beta: "+beta+" ; depth: "+depth);
         var winner = node.GetWinner();
         //if (winner != -1) console.log("alpha: "+alpha+" ; beta: "+beta+" ; depth: "+depth + " ; winner: "+winner);
-        if (winner != -1 || depth <= 0 || this.timeUp) {
+        if (winner != -1 || depth <= 0 || Date.now()-this.startTime > Game.enemyAIRandomSleepTime) {
             //console.log("winner: "+winner+" depth: "+depth+" timeUp: "+this.timeUp);
-            return node.currentPlayer == this.color ? node.GetRating() : - node.GetRating();
+            return node.GetRating(this.color);
         }
         
         var possibleMoves = node.GetPossibleMoves(); // generates children. also rates them and applies move to copy of field. 
@@ -575,14 +582,16 @@ class EnemyAIMinimax implements EnemyAI {
             if (node.GetWinner() == this.color) {
                 console.log("[AI] Taking shortcut to win.")
                 this.storedMove = move;
-                return node.GetRating();
+                return node.GetRating(this.color);
             }
             node.UndoMove(move);
+            // mix moves
+            // a bit randomness if moves equal so it is not fully deterministic
+            // only necessary for depth == this.startDepth is move is from there
+            possibleMoves = this.shuffleArray(possibleMoves);
         }
 
-        // mix moves
-        // a bit randomness if moves equal so it is not fully deterministic
-        possibleMoves = this.shuffleArray(possibleMoves);
+        
 
         if (node.currentPlayer == this.color) { // ai tries to maximize the score
             var maxValue = alpha;
@@ -601,6 +610,7 @@ class EnemyAIMinimax implements EnemyAI {
                 node.UndoMove(move);
 
                 if (value > maxValue) {
+                    // found a move that produces a better result for us
                     maxValue = value;
                     if (maxValue >= beta) break; // cutoff
                     if (depth == this.startDepth) {
@@ -619,6 +629,7 @@ class EnemyAIMinimax implements EnemyAI {
                 node.UndoMove(move);
 
                 if (value < minValue) {
+                    // found a move where enemy can minimize our score further
                     minValue = value;
                     if (minValue <= alpha) break; // cutoff
                 }

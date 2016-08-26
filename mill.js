@@ -53,6 +53,8 @@ var GameNode = (function () {
     };
     GameNode.prototype.GetPossibleMoves = function () {
         var arr = new Array();
+        if (this.GetWinner() != -1)
+            return arr; // game ended -> no more moves
         switch (this.gamePhase) {
             case 1:
                 for (var i = 0; i < 24; i++) {
@@ -241,7 +243,7 @@ var GameNode = (function () {
         }
         return -1;
     };
-    GameNode.prototype.GetRating = function () {
+    GameNode.prototype.GetRating = function (color) {
         // Rating procedure follows roughly:
         // https://kartikkukreja.wordpress.com/2014/03/17/heuristicevaluation-function-for-nine-mens-morris/
         // mill closed for currentPlayer
@@ -262,17 +264,18 @@ var GameNode = (function () {
         // winning configurations
         var winner = this.GetWinner();
         var criteria8 = (winner == -1) ? 0 : (winner == this.currentPlayer ? 1 : -1);
+        var rating = 0;
         if (this.gamePhase == 1 || (this.gamePhase == 3 && this.gameTurn < 18)) {
-            return 100 * criteria1 + 26 * criteria2 + 1 * criteria3 + 9 * criteria4 + 10 * criteria5 + 7 * criteria6;
+            rating = 100 * criteria1 + 26 * criteria2 + 1 * criteria3 + 9 * criteria4 + 10 * criteria5 + 7 * criteria6;
         }
-        if (this.stones.some(function (a) { return a.filter(function (b) { return b; }).length <= 3; })) {
-            return 300 * criteria1 + 10 * criteria5 + 1 * criteria6 + 500000 * criteria8;
+        else if (this.stones.some(function (a) { return a.filter(function (b) { return b; }).length <= 3; })) {
+            rating = 300 * criteria1 + 10 * criteria5 + 1 * criteria6 + 500000 * criteria8;
         }
-        if (this.gamePhase == 2 || (this.gamePhase == 3 && this.gameTurn >= 18)) {
-            return 500 * criteria1 + 43 * criteria2 + 10 * criteria3 + 11 * criteria4 + 8 * criteria7 + 500000 * criteria8;
+        else if (this.gamePhase == 2 || (this.gamePhase == 3 && this.gameTurn >= 18)) {
+            rating = 500 * criteria1 + 43 * criteria2 + 10 * criteria3 + 11 * criteria4 + 8 * criteria7 + 500000 * criteria8;
         }
-        console.error("[AI] Could not calculate score for game configuration...");
-        return 0;
+        rating *= color == this.currentPlayer ? 1 : -1;
+        return rating;
     };
     GameNode.prototype.NumberOfTwoPieceConfs = function (player) {
         var count = 0;
@@ -489,20 +492,15 @@ var EnemyAIMinimax = (function () {
             return false;
         }
         // depth of search dependent on game phase (phase 1 has vast more possibilities)
-        switch (Game.phase) {
-            case 1:
-                this.startDepth = 4;
-                break;
-            case 2:
-                this.startDepth = 4;
-                break;
-            case 3:
-                this.startDepth = 4;
-                break;
-            default:
-                this.startDepth = 4;
-                break;
+        /*
+        switch(Game.phase) {
+            case 1: this.startDepth = 4; break;
+            case 2: this.startDepth = 4; break;
+            case 3: this.startDepth = 4; break;
+            default: this.startDepth = 4; break;
         }
+        */
+        this.startDepth = 2;
         // Wait the given time before executing actual move calculation
         // just wait shortly to give html time to render
         setTimeout(function () { _this.MakeMoveIntern(); }, 50);
@@ -510,13 +508,18 @@ var EnemyAIMinimax = (function () {
         this.finished = false;
         this.timeUp = false;
         this.startTime = Date.now();
-        this.timoutHandler = setTimeout(function () { _this.timeUp = true; }, Game.enemyAIRandomSleepTime);
     };
     EnemyAIMinimax.prototype.ExecuteMove = function () {
         if (this.storedMove == null) {
-            console.error("[AI] No moves could be calculated! This should not have happened.");
+            console.error("[AI] No moves could be calculated! Making random decision.");
+            var possibleMoves = GameNode.GetFromCurrentBoard().GetPossibleMoves();
+            if (possibleMoves.length < 1) {
+                console.error("[AI] No possible moves found...");
+                return;
+            }
+            this.storedMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
         }
-        else if (this.storedMove.phase == Game.phase) {
+        if (this.storedMove.phase == Game.phase) {
             switch (Game.phase) {
                 case 1:
                     if (this.storedMove.from == -1 && this.storedMove.to != -1)
@@ -550,7 +553,6 @@ var EnemyAIMinimax = (function () {
         // Start alpha beta search:
         this.storedMove = null;
         var rating = this.AlphaBeta(GameNode.GetFromCurrentBoard(), this.startDepth, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY);
-        clearTimeout(this.timoutHandler); // clear timeout so it will not be triggered during the next run
         console.log("[AI] Found move with rating " + rating + ".");
         //console.log(this.storedMove);
         this.finished = true;
@@ -561,9 +563,9 @@ var EnemyAIMinimax = (function () {
         //console.log("alpha: "+alpha+" ; beta: "+beta+" ; depth: "+depth);
         var winner = node.GetWinner();
         //if (winner != -1) console.log("alpha: "+alpha+" ; beta: "+beta+" ; depth: "+depth + " ; winner: "+winner);
-        if (winner != -1 || depth <= 0 || this.timeUp) {
+        if (winner != -1 || depth <= 0 || Date.now() - this.startTime > Game.enemyAIRandomSleepTime) {
             //console.log("winner: "+winner+" depth: "+depth+" timeUp: "+this.timeUp);
-            return node.currentPlayer == this.color ? node.GetRating() : -node.GetRating();
+            return node.GetRating(this.color);
         }
         var possibleMoves = node.GetPossibleMoves(); // generates children. also rates them and applies move to copy of field. 
         // shortcut if winning in sight
@@ -574,13 +576,14 @@ var EnemyAIMinimax = (function () {
                 if (node.GetWinner() == this.color) {
                     console.log("[AI] Taking shortcut to win.");
                     this.storedMove = move;
-                    return node.GetRating();
+                    return node.GetRating(this.color);
                 }
                 node.UndoMove(move);
+                // mix moves
+                // a bit randomness if moves equal so it is not fully deterministic
+                // only necessary for depth == this.startDepth is move is from there
+                possibleMoves = this.shuffleArray(possibleMoves);
             }
-        // mix moves
-        // a bit randomness if moves equal so it is not fully deterministic
-        possibleMoves = this.shuffleArray(possibleMoves);
         if (node.currentPlayer == this.color) {
             var maxValue = alpha;
             for (var _a = 0, possibleMoves_2 = possibleMoves; _a < possibleMoves_2.length; _a++) {
@@ -599,6 +602,7 @@ var EnemyAIMinimax = (function () {
                 }
                 node.UndoMove(move);
                 if (value > maxValue) {
+                    // found a move that produces a better result for us
                     maxValue = value;
                     if (maxValue >= beta)
                         break; // cutoff
@@ -619,6 +623,7 @@ var EnemyAIMinimax = (function () {
                 var value = this.AlphaBeta(node, depth - 1, alpha, minValue);
                 node.UndoMove(move);
                 if (value < minValue) {
+                    // found a move where enemy can minimize our score further
                     minValue = value;
                     if (minValue <= alpha)
                         break; // cutoff
@@ -657,7 +662,7 @@ var EnemyAIRandom = (function () {
         }
         // Wait the given time before executing actual move calculation
         var currAI = this;
-        setTimeout(function () { currAI.MakeMoveIntern(); }, Game.enemyAIRandomSleepTime);
+        setTimeout(function () { currAI.MakeMoveIntern(); }, 5); //Game.enemyAIRandomSleepTime);
     };
     EnemyAIRandom.prototype.MakeMoveIntern = function () {
         switch (Game.phase) {
@@ -986,10 +991,32 @@ var Game = (function () {
         winnerScreenText.innerText = "Game is drawn!";
         winnerScreen.style.display = 'table';
     };
+    Game.AutoPlayStatistics = function (totalStop) {
+        var _this = this;
+        if (Game.phase == 4 || Game.phase == 5) {
+            if (Game.phase == 4)
+                this.countWin[Game.currentPlayer]++;
+            else
+                this.countDraw++;
+            var infoText = "W: " + this.countWin[1] + " - B: " + this.countWin[0] + " - D: "
+                + this.countDraw + " => T: " + (this.countWin[0] + this.countWin[1] + this.countDraw);
+            console.info(infoText);
+            footer.innerHTML = infoText;
+            if (totalStop != null && (this.countWin[0] + this.countWin[1] + this.countDraw) >= totalStop)
+                return; // No new game and further listening
+            Menu.StartGame();
+        }
+        if (totalStop != null)
+            setTimeout(function () { return _this.AutoPlayStatistics(totalStop); }, 100);
+        else
+            setTimeout(function () { return _this.AutoPlayStatistics(); }, 100);
+    };
     /** Set if a player is played by computer */
     Game.playerAI = [null, null];
     /** How long AI will sleep before deciding its next move */
     Game.enemyAIRandomSleepTime = 500; // ms
+    Game.countWin = [0, 0];
+    Game.countDraw = 0;
     return Game;
 }());
 /**
@@ -1694,6 +1721,7 @@ var gameMenu;
 var gameBoard;
 var winnerScreen;
 var winnerScreenText;
+var footer;
 /**
  * This function is called when page finished loading.
  */
@@ -1702,6 +1730,8 @@ function onLoad() {
     gameBoard = document.getElementById("gameBoard");
     winnerScreen = document.getElementById("winnerScreen");
     winnerScreenText = document.getElementById("winnerScreenText");
+    footer = document.getElementsByTagName('footer')[0].getElementsByTagName('p')[0];
     Game.Reset();
+    Game.AutoPlayStatistics(100); // NOT IN THE FINAL VERSION!
 }
 //# sourceMappingURL=mill.js.map
