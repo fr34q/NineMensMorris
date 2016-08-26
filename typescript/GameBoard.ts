@@ -28,7 +28,7 @@ class GameBoard
 
     // for draw detection
     // stores last turn a mill was created
-    private static lastTurnMill : number;
+    static lastTurnMill : number;
     // stores how often a specific board configuration was alreade placed
     // if one set of stone position is detected 3 times game is draw
     static hashForDraw : number[];

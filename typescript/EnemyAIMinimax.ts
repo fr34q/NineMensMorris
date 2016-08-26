@@ -3,6 +3,51 @@
  */
 interface GameMove {phase: number; from: number; to: number}
 
+class GameMoveNode {
+    move : GameMove;
+    parentNode : GameMoveNode;
+
+    nextMoves : GameMoveNode[];
+
+    private _rating : number;
+    get rating() : number {return this._rating;}
+    set rating(newRating : number) {
+        this._rating = newRating;
+        if(this.nextMaxRating < newRating) this.nextMaxRating = newRating;
+        if(this.nextMinRating > newRating) this.nextMinRating = newRating;
+        if (this.parentNode) 
+            this.parentNode.NextRatingChanged(this.nextMinRating, this.nextMaxRating);
+    }
+
+    nextMinRating : number = Number.POSITIVE_INFINITY;
+    nextMaxRating : number = Number.NEGATIVE_INFINITY;
+
+    private childrenRated : boolean = false;
+
+    constructor(_move : GameMove, _parentNode : GameMoveNode) {
+        this.move = _move;
+        this.parentNode = _parentNode;
+        this.nextMoves = [];
+    }
+
+    NextRatingChanged(min: number, max: number) : void {
+        var push = false;
+        if (min < this.nextMinRating || !this.childrenRated) { this.nextMinRating = min; push = true; }
+        if (max > this.nextMaxRating || !this.childrenRated) { this.nextMaxRating = max; push = true; }
+         // will be changed on first call so nodes with childs have nextMin/MaxRating accordingly
+         // and those without return their own rating
+        this.childrenRated = true;
+        if (push && this.parentNode) 
+            this.parentNode.NextRatingChanged(this.nextMinRating, this.nextMaxRating); 
+    }
+
+    AddNextMove(move : GameMove) : GameMoveNode {
+        var node = new GameMoveNode(move,this);
+        this.nextMoves.push(node);
+        return node;
+    }
+}
+
 
 /**
  * Class for storing game information for the alpha beta algorithm.
@@ -64,6 +109,7 @@ class GameNode {
 
     GetPossibleMoves() : Array<GameMove> {
         var arr = new Array<GameMove>();
+        if(this.GetWinner() != -1) return arr; // game ended -> no more moves
         switch (this.gamePhase) {
             case 1: // placing stones
                 for (var i = 0; i < 24; i++) {
@@ -103,7 +149,7 @@ class GameNode {
 
     PerformMove(move : GameMove) : boolean {
         if(move.phase != this.gamePhase) {
-            console.error("[AI] move not fitting to current game node.")
+            console.error("[AI] move not fitting to current game node. ("+move.phase+" =/= "+this.gamePhase+")");
             return false;
         }
         switch(this.gamePhase) {
@@ -119,6 +165,7 @@ class GameNode {
                 if (move.from == -1 || move.to == -1 || this.stones[0][move.to] || this.stones[1][move.to]
                         || !this.stones[this.currentPlayer][move.from]) {
                     console.error("[AI] game move has wrong values");
+                    console.log(move);
                     return false;
                 }
                 this.stones[this.currentPlayer][move.from] = false;
@@ -244,7 +291,7 @@ class GameNode {
         return -1;
     }
 
-    GetRating() : number {
+    GetRating(color : number) : number {
         // Rating procedure follows roughly:
         // https://kartikkukreja.wordpress.com/2014/03/17/heuristicevaluation-function-for-nine-mens-morris/
 
@@ -266,19 +313,21 @@ class GameNode {
         // winning configurations
         var winner = this.GetWinner();
         var criteria8 = (winner == -1) ? 0 : (winner == this.currentPlayer ? 1 : -1);
+        // punishment for draw / repeating sequences
+        var criteria9 = GameBoard.hashForDraw[this.CurrentStateToNumber()] || this.gameTurn-GameBoard.lastTurnMill > 45 ? -1 : 0;
 
-        
+        var rating = 0;        
         if (this.gamePhase == 1 || (this.gamePhase == 3 && this.gameTurn < 18)) {
-            return 100 * criteria1 + 26 * criteria2 + 1 * criteria3 + 9 * criteria4 + 10 * criteria5 + 7 * criteria6;
+            rating = 100 * criteria1 + 30 * criteria2 + 5 * criteria3 + 10 * criteria4 + 30 * criteria5 + 50 * criteria6;
         }
         if (this.stones.some(a => a.filter(b => b).length <= 3)) {
-            return 300 * criteria1 + 10 * criteria5 + 1 * criteria6 + 500000 * criteria8;
+            rating = 300 * criteria1 + 30 * criteria5 + 40 * criteria6 + 500000 * criteria8;
         }
         if (this.gamePhase == 2 || (this.gamePhase == 3 && this.gameTurn >= 18)) {
-            return 500 * criteria1 + 43 * criteria2 + 10 * criteria3 + 11 * criteria4 + 8 * criteria7 + 500000 * criteria8;
+            rating = 500 * criteria1 + 60 * criteria2 + 15 * criteria3 + 20 * criteria4 + 40 * criteria7 + 500000 * criteria8;
         }
-        console.error("[AI] Could not calculate score for game configuration...");
-        return 0;
+        rating *= (color == this.currentPlayer) ? 1 : -1;
+        return rating + criteria9*100000;
     }
 
     NumberOfTwoPieceConfs(player : number) : number {
@@ -402,6 +451,7 @@ class GameNode {
         }
         return count;
     }
+    /*
     NumberOfMills(player : number) : number {
         var alreadyHorizMill = new Array<boolean>(24);
         var alreadyVertiMill = new Array<boolean>(24);
@@ -444,6 +494,16 @@ class GameNode {
         }
         return count;
     }
+    */
+    NumberOfMills(player : number) : number {
+        var count = 0;
+        for (var i = 0; i < 24; i++) {
+            if (!this.stones[player][i]) continue;
+            if (this.CheckMillHorizontal(i)) count++;
+            if (this.CheckMillVertical(i)) count++;
+        }
+        return count/3; // only rough approximation but better than nothing
+    }
     NumberOfDoubleMills(player : number) : number {
         var count = 0;
         for (var i = 0; i < 24; i++) {
@@ -472,8 +532,6 @@ class GameNode {
 class EnemyAIMinimax implements EnemyAI {
     color : number;
 
-    private startDepth : number = 4;
-
     private storedMove : GameMove;
     private finished : boolean;
     private startTime : number;
@@ -492,15 +550,6 @@ class EnemyAIMinimax implements EnemyAI {
             return false;
         }
 
-        // depth of search dependent on game phase (phase 1 has vast more possibilities)
-        switch(Game.phase) {
-            case 1: this.startDepth = 4; break;
-            case 2: this.startDepth = 4; break;
-            case 3: this.startDepth = 4; break;
-            default: this.startDepth = 4; break;
-        }
-
-
         // Wait the given time before executing actual move calculation
         // just wait shortly to give html time to render
         setTimeout(() => {this.MakeMoveIntern();}, 50);
@@ -509,7 +558,6 @@ class EnemyAIMinimax implements EnemyAI {
         this.finished = false;
         this.timeUp = false;
         this.startTime = Date.now();
-        this.timoutHandler = setTimeout(() => {this.timeUp = true;}, Game.enemyAIRandomSleepTime);
     }
 
     ExecuteMove() : void {
@@ -548,83 +596,87 @@ class EnemyAIMinimax implements EnemyAI {
         //console.log("[AI] Time is up alert!");
         // Start alpha beta search:
         this.storedMove = null;
-        var rating = this.AlphaBeta(GameNode.GetFromCurrentBoard(), this.startDepth, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY);
+        var rating = this.BFS();
         clearTimeout(this.timoutHandler); // clear timeout so it will not be triggered during the next run
         console.log("[AI] Found move with rating "+rating+".");
         //console.log(this.storedMove);
         this.finished = true;
-        console.log("[AI] "+(Date.now()-this.startTime)+"ms needed to calculate this move.");
         this.ExecuteMove();
     } 
 
     
-    private AlphaBeta(node : GameNode, depth : number, alpha : number, beta : number) : number {
-        //console.log("alpha: "+alpha+" ; beta: "+beta+" ; depth: "+depth);
-        var winner = node.GetWinner();
-        //if (winner != -1) console.log("alpha: "+alpha+" ; beta: "+beta+" ; depth: "+depth + " ; winner: "+winner);
-        if (winner != -1 || depth <= 0 || this.timeUp) {
-            //console.log("winner: "+winner+" depth: "+depth+" timeUp: "+this.timeUp);
-            return node.currentPlayer == this.color ? node.GetRating() : - node.GetRating();
-        }
-        
-        var possibleMoves = node.GetPossibleMoves(); // generates children. also rates them and applies move to copy of field. 
-        
-        // shortcut if winning in sight
-        if (depth == this.startDepth) for(var move of possibleMoves) {
-            node.PerformMove(move);
-            if (node.GetWinner() == this.color) {
-                console.log("[AI] Taking shortcut to win.")
-                this.storedMove = move;
-                return node.GetRating();
+    private BFS() : number {
+        var gameMoveNodeSource = new GameMoveNode(null, null);
+        var gameNode = GameNode.GetFromCurrentBoard();
+
+        var currentNodes : GameMoveNode[] = [gameMoveNodeSource];
+        var nextNodes : GameMoveNode[] = [];
+        var level = 0;
+
+        while ((currentNodes.length > 0 || nextNodes.length > 0) && Date.now()-this.startTime <= Game.enemyAIRandomSleepTime) {
+            if (currentNodes.length == 0) {
+                currentNodes = nextNodes;
+                currentNodes.sort((n1,n2) => n2.rating - n1.rating); // high ratings to the end
+                // limit currentNodes (take the best ratings) -> no guarantees anymore but faster
+                currentNodes = currentNodes.slice(currentNodes.length-200);
+                nextNodes = [];
+                level++;
             }
-            node.UndoMove(move);
-        }
+            var moveNode = currentNodes.pop();
+            //console.log(level+": "+moveNode.rating);
+            //console.log(moveNode.move);
 
-        // mix moves
-        // a bit randomness if moves equal so it is not fully deterministic
-        possibleMoves = this.shuffleArray(possibleMoves);
+            
+            var moveStack : GameMove[] = []
+            var moveBack = moveNode;
+            while (moveBack.parentNode) {
+                moveStack.push(moveBack.move);
+                moveBack = moveBack.parentNode;
+            }
+            for (var i = moveStack.length-1; i >= 0; i--) {
+                gameNode.PerformMove(moveStack[i]);
+            }
 
-        if (node.currentPlayer == this.color) { // ai tries to maximize the score
-            var maxValue = alpha;
+            var possibleMoves = gameNode.GetPossibleMoves();
             for (var move of possibleMoves) {
-                //console.log(move);
-                node.PerformMove(move);
-                var currState = node.CurrentStateToNumber();
-                if (!GameBoard.hashForDraw[currState] && !this.hashForRepeat[currState]) {
-                    this.hashForRepeat[currState] = true;
-                    var value = this.AlphaBeta(node, depth-1, maxValue, beta);
-                    this.hashForRepeat = this.hashForRepeat.splice(currState,1);
-                } else {
-                    var value = maxValue;
-                    console.log("[AI] Skipping repeating move.");
-                }
-                node.UndoMove(move);
-
-                if (value > maxValue) {
-                    maxValue = value;
-                    if (maxValue >= beta) break; // cutoff
-                    if (depth == this.startDepth) {
-                        // save potential move
-                        this.storedMove = move;
-                    }
-                }
+                var node = moveNode.AddNextMove(move);
+                gameNode.PerformMove(move);
+                node.rating = gameNode.GetRating(this.color);
+                gameNode.UndoMove(move);
+                nextNodes.push(node);
             }
-            return maxValue;
-        } else { // enemy tries to minimize the score
-            var minValue = beta;
-            for (var move of possibleMoves) {
-                //console.log(move);
-                node.PerformMove(move);
-                var value = this.AlphaBeta(node, depth - 1, alpha, minValue);
-                node.UndoMove(move);
 
-                if (value < minValue) {
-                    minValue = value;
-                    if (minValue <= alpha) break; // cutoff
-                }
+            for (var i = 0; i < moveStack.length; i++) {
+                gameNode.UndoMove(moveStack[i]);
             }
-            return minValue;
         }
+
+        var maxMinRating = Number.NEGATIVE_INFINITY;
+        let bestMove : GameMove;
+        // shuffle to make AI a bit more non-deterministic
+        this.shuffleArray(gameMoveNodeSource.nextMoves).forEach(node => {
+            if(node.nextMinRating > maxMinRating) {
+                maxMinRating = node.nextMinRating;
+                bestMove = node.move;
+            }
+        });
+
+        // if for some reason no move could be obtained
+        if(!bestMove) {
+            var possibleMoves = GameNode.GetFromCurrentBoard().GetPossibleMoves();
+            if (possibleMoves.length) {
+                console.error("[AI] No possible moves found...");
+                return undefined;
+            }
+            bestMove = possibleMoves[Math.floor(Math.random()*possibleMoves.length)];
+            console.log("[AI] No move could be obtained, making random decision.")
+        }
+        this.storedMove = bestMove;
+
+        //console.log(gameMoveNodeSource);
+        console.log("[AI] "+(Date.now()-this.startTime)+"ms needed to calculate this move, reaching level "+level+".");
+
+        return maxMinRating;
     }
 
     /**
