@@ -12,7 +12,7 @@
 interface Position2 { x: number; y: number; }
 interface FieldPosition { x: number; y: number; }
 
-// Define variables to globally gameBoard and gameMenu
+// Declare variables to globally access gameBoard and gameMenu
 let gameMenu : HTMLDivElement;
 let gameBoard : HTMLDivElement;
 let winnerScreen : HTMLDivElement;
@@ -29,13 +29,14 @@ function onLoad() : void {
     winnerScreenText = <HTMLSpanElement> document.getElementById("winnerScreenText");
     footer = document.getElementsByTagName('footer')[0].getElementsByTagName('p')[0];
     Game.Reset();
-}
 
-// Close the dropdown menu if the user clicks outside of it
-window.onclick = function(event) {
-    if (!(<HTMLElement> event.target).matches('.dropbtn')) {
-        var dropdowns = document.getElementsByClassName("dropdown-content");
-        for (var i = 0; i < dropdowns.length; i++)
-            dropdowns[i].classList.remove('show');
+    // Needed for menu:
+    // Close the dropdown menu if the user clicks outside of it
+    window.onclick = function(event) {
+        if (!(<HTMLElement> event.target).matches('.dropbtn')) {
+            var dropdowns = document.getElementsByClassName("dropdown-content");
+            for (var i = 0; i < dropdowns.length; i++)
+                dropdowns[i].classList.remove('show');
+        }
     }
 }

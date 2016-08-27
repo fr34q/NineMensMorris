@@ -13,5 +13,5 @@ interface EnemyAI {
      */
     MakeMove() : boolean;
 
-    // Class additionally has to provide a constructor where the color is provided as only parameter.
+    // Class additionally has to provide a constructor where the color is provided.
 }
