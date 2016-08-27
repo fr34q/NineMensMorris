@@ -723,8 +723,8 @@ class EnemyAIMinimax implements EnemyAI {
         this.startTime = Date.now();
         // Start alpha beta search:
         var rating = this.AlphaBeta(GameNode.GetFromCurrentBoard(), this.startDepth, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY);
-        console.log("[AI] Found move with rating "+rating+".");
-        console.log("[AI] "+(Date.now()-this.startTime)+"ms needed to calculate this move.");
+        //console.log("[AI] Found move with rating "+rating+".");
+        //console.log("[AI] "+(Date.now()-this.startTime)+"ms needed to calculate this move.");
 
         // AI has some time to move, as the html transition of the previous move might be still ongoing
         // the AI will wait the full time before executing the calculated move
