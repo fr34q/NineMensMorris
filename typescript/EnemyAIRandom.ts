@@ -2,12 +2,22 @@
  * Stupid AI implementation using random selection among all possibilities.
  */
 class EnemyAIRandom implements EnemyAI {
+    /** Color the AI plays for */
     color : number;
 
+    /** 
+     * Instantiates a random AI.
+     * @param {number} _color The color the AI plays for
+     * @constructor
+     */
     constructor(_color : number) {
         this.color = _color;
     }
 
+    /**
+     * Function that invokes the AI if a move has to be performed.
+     * @returns {boolean} if a move could be performed.
+     */
     MakeMove() : boolean {
         if (Game.currentPlayer != this.color) {
             // this should not be necessary but just in case lets log if it happens
@@ -15,11 +25,16 @@ class EnemyAIRandom implements EnemyAI {
             return false;
         }
 
-        // Wait the given time before executing actual move calculation
-        var currAI = this;
-        setTimeout(function() { currAI.MakeMoveIntern(); }, Game.aiDecisionTime);
+        // Wait the given time before executing actual move calculation as this is done in no time
+        var result = false;
+        setTimeout(() => result = this.MakeMoveIntern(), Game.aiDecisionTime);
+        return result;
     }
 
+    /**
+     * Calculates and executes the next move.
+     * @returns {boolean} if a move could be performed.
+     */
     MakeMoveIntern() : boolean {
         switch (Game.phase) {
             case 1: // place stones
