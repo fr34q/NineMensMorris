@@ -91,11 +91,11 @@
 
 }
 .stoneWhite {
-    background: url(../pictures/marmor4s.jpg);
+    background: url(../pictures/white.jpg);
     border: 0.3vmin solid black;
 }
 .stoneBlack {
-    background: url(../pictures/marmor3s.jpg);
+    background: url(../pictures/black.jpg);
     border: 0.3vmin solid white;
 }
 .stoneMoveFast {
