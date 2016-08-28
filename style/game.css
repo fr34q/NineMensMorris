@@ -41,22 +41,33 @@
 }
 
 .field {
-    height: 2vmin;
-    width: 2vmin;
-    margin: -1vmin 0 0 -1vmin;
+    height: 9vmin;
+    width: 9vmin;
+    margin: -4.5vmin 0 0 -4.5vmin;
     padding: 0;
-    background-color: black;
+    background-color: transparent;
     border-radius: 50%;
-    border: none;
     position: absolute;
     left: 50%;
     top: 50%;
-    z-index: 2;
+    z-index:2;
 }
-.fieldMoveable {
+.field:after {
+    position: absolute;
+    content: "";
+    height: 2vmin;
+    width: 2vmin;
+    left: 3.5vmin;
+    top: 3.5vmin;
+    background-color: black;
+    border-radius: 50%;
+    border: none;
+    
+}
+.fieldMoveable:after {
     background-color: #00aa00;
 }
-.fieldMoveable:hover {
+.fieldMoveable:hover:after {
     background-color: #44ff00;
 }
 
