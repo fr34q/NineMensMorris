@@ -1,6 +1,7 @@
 #gameMenu {
-    background: url(../pictures/wood.jpg);
-    background-size: cover;
+    /*background: url(../pictures/wood.jpg);
+    background-size: cover;*/
+    background-color: rgba(255,255,255,0.35);
     width: 90vmin;
     height: 76vmin;
     padding: 0;
@@ -9,7 +10,7 @@
     /*margin: 2.5vmin auto;*/
     border-radius: 4.412vmin;
     /*position: relative;*/
-    box-shadow: 20px 10px 10px rgba(0,0,0,0.8);
+    box-shadow: 0 0 6vmin rgba(0,0,0,0.8);
 
     position: absolute;
     top: 50%;

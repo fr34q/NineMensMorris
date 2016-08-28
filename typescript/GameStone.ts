@@ -160,7 +160,7 @@ class GameStone
         }
 
         // set random offset so all stones look different
-        this._element.style.backgroundPosition = Math.floor(Math.random()*201) + 'px, ' + Math.floor(Math.random()*201) + 'px';
+        //this._element.style.backgroundPosition = Math.floor(Math.random()*201) + 'px, ' + Math.floor(Math.random()*201) + 'px';
         gameBoard.appendChild(this._element);
 
         this._element.onclick = () => this.OnClicked(); // lambda expression to avoid complications with 'this'

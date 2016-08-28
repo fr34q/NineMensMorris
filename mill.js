@@ -1751,7 +1751,7 @@ var GameStone = (function () {
             this._element.classList.add("stoneMoveFast");
         }
         // set random offset so all stones look different
-        this._element.style.backgroundPosition = Math.floor(Math.random() * 201) + 'px, ' + Math.floor(Math.random() * 201) + 'px';
+        //this._element.style.backgroundPosition = Math.floor(Math.random()*201) + 'px, ' + Math.floor(Math.random()*201) + 'px';
         gameBoard.appendChild(this._element);
         this._element.onclick = function () { return _this.OnClicked(); }; // lambda expression to avoid complications with 'this'
     }
