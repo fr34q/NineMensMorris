@@ -713,8 +713,8 @@ var EnemyAIMinimax = (function () {
         this.startTime = Date.now();
         // Start alpha beta search:
         var rating = this.AlphaBeta(GameNode.GetFromCurrentBoard(), this.startDepth, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY);
-        console.log("[AI] Found move with rating " + rating + ".");
-        console.log("[AI] " + (Date.now() - this.startTime) + "ms needed to calculate this move.");
+        //console.log("[AI] Found move with rating "+rating+".");
+        //console.log("[AI] "+(Date.now()-this.startTime)+"ms needed to calculate this move.");
         // AI has some time to move, as the html transition of the previous move might be still ongoing
         // the AI will wait the full time before executing the calculated move
         var remainingTime = Game.aiDecisionTime - (Date.now() - this.startTime);
@@ -1733,6 +1733,7 @@ var GameStone = (function () {
         this._active = false;
         this._moveable = false;
         this._removeable = false;
+        this._hoverable = false;
         /**
          * field on which the stone currently is placed if any
          */
@@ -1847,6 +1848,25 @@ var GameStone = (function () {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(GameStone.prototype, "hoverable", {
+        /**
+         * if the stone can be hovered at the moment
+         */
+        get: function () {
+            return this._hoverable;
+        },
+        set: function (newHoverable) {
+            if (newHoverable) {
+                this.element.classList.add('stoneHoverable');
+            }
+            else {
+                this.element.classList.remove('stoneHoverable');
+            }
+            this._hoverable = newHoverable;
+        },
+        enumerable: true,
+        configurable: true
+    });
     Object.defineProperty(GameStone.prototype, "isPlaced", {
         /**
          * Returns true if stone is placed on the field.
@@ -1880,20 +1900,38 @@ var GameStone = (function () {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(GameStone.prototype, "canBeClicked", {
+        /**
+         * If the stone can be clicked
+         */
+        get: function () {
+            return (Game.phase == 2 && Game.currentPlayer == this.color
+                && !Game.playerAI[this.color] && this.isMoveable && !this.active)
+                || (Game.phase == 3 && Game.currentPlayer == 1 - this.color
+                    && !Game.playerAI[1 - this.color] && this.isPlaced && !this.isInClosedMill);
+        },
+        enumerable: true,
+        configurable: true
+    });
     /**
      * Updates stone properties and style converning moveable and removeable.
      */
     GameStone.prototype.UpdateProperties = function () {
         // Mark stones that can be moved
         this.moveable = Game.phase == 2 && this.color == Game.currentPlayer && this.isMoveable;
-        // Mark stones that can be removed and highlight the stone currently hovered
+        // Mark stones that can be removed
         this.removeable = Game.phase == 3 && this.color != Game.currentPlayer && !this.isInClosedMill && this.isPlaced;
+        // Set if the stone can be hovered (so if it may be clicked by player)
+        this.hoverable = this.canBeClicked;
     };
     /**
      * Method called if clicked on stone.
      * @returns {boolean} if click was consumed by the stone or not.
      */
     GameStone.prototype.OnClicked = function () {
+        // if element cannot be clicked return false
+        if (!this.canBeClicked)
+            return false;
         if (Game.phase == 2 && Game.currentPlayer == this.color && this.isMoveable) {
             // Stone can be moved -> activate him
             GameBoard.activeStone = this;

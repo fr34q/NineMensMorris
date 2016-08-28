@@ -9,6 +9,7 @@ class GameStone
     private _active : boolean = false;
     private _moveable : boolean = false;
     private _removeable : boolean = false;
+    private _hoverable : boolean = false;
 
     /**
      * color of the stone (readonly)
@@ -87,6 +88,21 @@ class GameStone
         this._removeable = newRemoveable;
     }
 
+    /** 
+     * if the stone can be hovered at the moment 
+     */
+    get hoverable() : boolean {
+        return this._hoverable;
+    }
+    set hoverable(newHoverable : boolean) {
+        if (newHoverable) {
+            this.element.classList.add('stoneHoverable');
+        } else {
+            this.element.classList.remove('stoneHoverable');
+        }
+        this._hoverable = newHoverable;
+    }
+
     /**
      * Returns true if stone is placed on the field.
      */
@@ -110,6 +126,16 @@ class GameStone
      */
     get isInClosedMill() : boolean {
         return this.field && (this.field.isClosedMillHorizontal || this.field.isClosedMillVertical);
+    }
+
+    /**
+     * If the stone can be clicked
+     */
+    get canBeClicked() : boolean {
+        return (Game.phase == 2 && Game.currentPlayer == this.color 
+                    && !Game.playerAI[this.color] && this.isMoveable && !this.active)
+                || (Game.phase == 3 && Game.currentPlayer == 1-this.color 
+                    && !Game.playerAI[1-this.color] && this.isPlaced && !this.isInClosedMill);
     }
 
     /**
@@ -146,8 +172,10 @@ class GameStone
     UpdateProperties() : void {
         // Mark stones that can be moved
         this.moveable = Game.phase == 2 && this.color == Game.currentPlayer && this.isMoveable;
-        // Mark stones that can be removed and highlight the stone currently hovered
+        // Mark stones that can be removed
         this.removeable = Game.phase == 3 && this.color != Game.currentPlayer && !this.isInClosedMill && this.isPlaced;
+        // Set if the stone can be hovered (so if it may be clicked by player)
+        this.hoverable = this.canBeClicked;
     }
 
     /**
@@ -155,6 +183,9 @@ class GameStone
      * @returns {boolean} if click was consumed by the stone or not.
      */
     OnClicked() : boolean {
+        // if element cannot be clicked return false
+        if (!this.canBeClicked) return false;
+        
         if (Game.phase == 2 && Game.currentPlayer == this.color && this.isMoveable) {
             // Stone can be moved -> activate him
             GameBoard.activeStone = this;
