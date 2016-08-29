@@ -96,7 +96,7 @@ class GameNode {
      */
     GetPossibleMoves() : Array<GameMove> {
         var arr = new Array<GameMove>();
-        if (this.GetWinner() != null) return arr; // game ended -> no more moves
+        if (this.GetWinner() !== null) return arr; // game ended -> no more moves
         switch (this.gamePhase) {
             case 1: // placing stones TODO: ← this kind of comment shouldn't be needed
                 for (var fieldNum = 0; fieldNum < 24; fieldNum++) { //TODO: ← 24 == magic constant. define it somewhere
@@ -374,7 +374,7 @@ class GameNode {
         var criteria8 = this.NumberOfOpenMills(this.currentPlayer) - this.NumberOfOpenMills(1-this.currentPlayer);
         // winning configurations
         var winner = this.GetWinner();
-        var criteria9 = (winner == -1) ? 0 : (winner == this.currentPlayer ? 1 : -1);
+        var criteria9 = (winner == null) ? 0 : (winner == this.currentPlayer ? 1 : -1);
 
         var rating = 0;
         if (this.gamePhase == 1 || (this.gamePhase == 3 && this.gameTurn < 18)) {
@@ -608,25 +608,25 @@ class GameNode {
             // check if this caused a mill and then look if there are neighbors that could actually do that
             if (this.CheckMillHorizontal(fieldNum)) {
                 // first check if there are enemy stones:
-                if ((GameNode.neighborTop[fieldNum] == -1 || !this.stones[1-player][GameNode.neighborTop[fieldNum]])
-                    && (GameNode.neighborBottom[fieldNum] == -1 || !this.stones[1-player][GameNode.neighborBottom[fieldNum]])) {
+                if ((GameNode.neighborTop[fieldNum] == null || !this.stones[1-player][GameNode.neighborTop[fieldNum]])
+                    && (GameNode.neighborBottom[fieldNum] == null || !this.stones[1-player][GameNode.neighborBottom[fieldNum]])) {
                     // no enemy stones that can prohibit the open mill from closing
                     // so check if we have a stone to close it
-                    if (GameNode.neighborTop[fieldNum] != -1 && this.stones[player][GameNode.neighborTop[fieldNum]])
+                    if (GameNode.neighborTop[fieldNum] != null && this.stones[player][GameNode.neighborTop[fieldNum]])
                         count++;
-                    else if (GameNode.neighborBottom[fieldNum] != -1 && this.stones[player][GameNode.neighborBottom[fieldNum]])
+                    else if (GameNode.neighborBottom[fieldNum] != null && this.stones[player][GameNode.neighborBottom[fieldNum]])
                         count++;
                 }
             }
             if (this.CheckMillVertical(fieldNum)) {
                 // first check if there are enemy stones:
-                if ((GameNode.neighborLeft[fieldNum] == -1 || !this.stones[1-player][GameNode.neighborLeft[fieldNum]])
-                    && (GameNode.neighborRight[fieldNum] == -1 || !this.stones[1-player][GameNode.neighborRight[fieldNum]])) {
+                if ((GameNode.neighborLeft[fieldNum] == null || !this.stones[1-player][GameNode.neighborLeft[fieldNum]])
+                    && (GameNode.neighborRight[fieldNum] == null || !this.stones[1-player][GameNode.neighborRight[fieldNum]])) {
                     // no enemy stones that can prohibit the open mill from closing
                     // so check if we have a stone to close it
-                    if (GameNode.neighborLeft[fieldNum] != -1 && this.stones[player][GameNode.neighborLeft[fieldNum]])
+                    if (GameNode.neighborLeft[fieldNum] != null && this.stones[player][GameNode.neighborLeft[fieldNum]])
                         count++;
-                    else if (GameNode.neighborRight[fieldNum] != -1 && this.stones[player][GameNode.neighborRight[fieldNum]])
+                    else if (GameNode.neighborRight[fieldNum] != null && this.stones[player][GameNode.neighborRight[fieldNum]])
                         count++;
                 }
             }
