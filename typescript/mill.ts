@@ -11,6 +11,10 @@
 interface Position2 { x: number; y: number; }
 interface FieldPosition { x: number; y: number; }
 
+/** Enum for handling the stone color. */
+enum StoneColor { Black, White }
+
+
 // Declare variables to globally access gameBoard and gameMenu
 let gameMenu : HTMLDivElement;
 let gameBoard : HTMLDivElement;
@@ -38,4 +42,15 @@ function onLoad() : void {
                 dropdowns[i].classList.remove('show');
         }
     }
+}
+
+/** 
+ * Helper function to get range [0,1,2,...,len-1] 
+ * @param {number} len The length of the range array.
+ * @returns {number[]} an array [0,1, ..., len-1].
+ */
+function indices(len : number) : number[] {
+    const arr = new Array<number>(len);
+    for (let i=0; i < len; i++) arr[i] = i;
+    return arr;
 }

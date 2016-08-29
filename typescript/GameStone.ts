@@ -140,16 +140,16 @@ class GameStone
 
     /**
      * Creates a stone of the given color.
-     * @param {number} color - Color of the stone (0: black, 1: white).
+     * @param {StoneColor} color - Color of the stone.
      * @constructor
      */
-    constructor (color : number, position : FieldPosition)
+    constructor (color : StoneColor, position : FieldPosition)
     {
         this._color = color;
         
         this._element = document.createElement('div');
         this.position = position; // after creating the div element we can set the position
-        this._element.setAttribute('class', color==1 ? 'stoneWhite' : 'stoneBlack');
+        this._element.setAttribute('class', color === StoneColor.White ? 'stoneWhite' : 'stoneBlack');
         if (Game.aiDecisionTime <= 200) {
             // instant transition moving stones
             this._element.classList.add("stoneMoveInstant");

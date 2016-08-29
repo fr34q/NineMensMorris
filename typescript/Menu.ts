@@ -68,8 +68,8 @@ class Menu {
      * @param {number} aiNum - Number describing which AI should be set.
      * @param {HTMLLinkElement} elem - Element that was clicked.
      */
-    static SetPlayerAI(color : number, aiNum : number, elem : HTMLLinkElement) : void {
-        if (color != 0 && color != 1)
+    static SetPlayerAI(color : StoneColor, aiNum : number, elem : HTMLLinkElement) : void {
+        if (color !== StoneColor.Black && color !== StoneColor.White)
             return; // input invalid
         switch(aiNum) {
             case 0: // playerAI

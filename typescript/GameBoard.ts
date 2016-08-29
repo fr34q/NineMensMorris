@@ -90,7 +90,7 @@ class GameBoard
             this.stones.forEach(arr => arr.forEach(s => s.Remove()));
         // create stones and place them next to the game board
         this.stones = [new Array<GameStone>(9), new Array<GameStone>(9)];
-        for (var color of [0,1]) {
+        for (var color of [StoneColor.Black, StoneColor.White]) {
             for (var i = 0; i < 9; i++) {
                 this.stones[color][i] = new GameStone(color, {x: 7-8*color, y: 6/8*i});
             }
@@ -103,11 +103,11 @@ class GameBoard
 
     /** 
      * Returns all stones of a given color that are placed on the field.
-     * @param {number} stonecolor - Color of the placed stones to return.
+     * @param {StoneColor} color - Color of the placed stones to return.
      * @returns {Array<GameStone>} an array with all placed stones of a given color.
      */
-    static GetStonesOnField(stonecolor : number) : Array<GameStone> {
-        return this.stones[stonecolor].filter(s => s.isPlaced);
+    static GetStonesOnField(color : StoneColor) : Array<GameStone> {
+        return this.stones[color].filter(s => s.isPlaced);
     }
 
     /**
@@ -257,10 +257,10 @@ class GameBoard
 
     /**
      * Returns a stone of a given color that is not placed yet.
-     * @param {number} color - Color of the stone to return.
+     * @param {StoneColor} color - Color of the stone to return.
      * @returns {GameStone} the unsettled stone or null of none present.
      */
-    static GetUnsettledStone(color : number) : GameStone {
+    static GetUnsettledStone(color : StoneColor) : GameStone {
         var unsettledStones = this.stones[Game.currentPlayer].filter(s => !s.isPlaced);
         if (unsettledStones.length < 1)
             return null;

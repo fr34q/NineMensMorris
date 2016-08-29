@@ -3,7 +3,7 @@
  */
 interface EnemyAI {
     /** Color the enemy AI plays for */
-    color : number;
+    color : StoneColor;
     /**
      * Method that is called if AI has to perform a move.
      * Depending on Game.phase a move should be done using functions:

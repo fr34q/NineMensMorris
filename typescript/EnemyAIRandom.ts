@@ -3,14 +3,14 @@
  */
 class EnemyAIRandom implements EnemyAI {
     /** Color the AI plays for */
-    color : number;
+    color : StoneColor;
 
     /** 
      * Instantiates a random AI.
      * @param {number} _color The color the AI plays for
      * @constructor
      */
-    constructor(_color : number) {
+    constructor(_color : StoneColor) {
         this.color = _color;
     }
 

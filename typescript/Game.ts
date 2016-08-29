@@ -7,7 +7,7 @@ class Game {
     /** Game turn (removing stones not counting) */
     static turn : number;
     /** Current player */
-    static currentPlayer : number;
+    static currentPlayer : StoneColor;
     /** 
      * Numbers describing the type of AI for each player.
      * 0: Human, 1: Random, 2: Easy, 3: Medium, 4: Hard
@@ -52,7 +52,7 @@ class Game {
     static ShowWinnerScreen() : void {
         Game.phase = 4;
         GameBoard.UpdateProperties();
-        winnerScreenText.innerText = (Game.currentPlayer == 1 ? "White" : "Black") + " wins!";
+        winnerScreenText.innerText = (Game.currentPlayer == StoneColor.White ? "White" : "Black") + " wins!";
         winnerScreen.style.display = 'table';
     }
     /**
