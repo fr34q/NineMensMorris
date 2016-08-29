@@ -364,22 +364,25 @@ class GameNode {
         var criteria5 = this.NumberOfTwoPieceConfs(this.currentPlayer) - this.NumberOfTwoPieceConfs(1-this.currentPlayer);
         // difference between number of 3-piece configurations
         var criteria6 = this.NumberOfThreePieceConfs(this.currentPlayer) - this.NumberOfThreePieceConfs(1-this.currentPlayer);
-        // difference between number of double mills
-        var criteria7 = this.NumberOfDoubleMills(this.currentPlayer) - this.NumberOfDoubleMills(1-this.currentPlayer);
+        // difference between number of open double mills
+        var criteria7 = this.NumberOfOpenDoubleMills(this.currentPlayer) - this.NumberOfOpenDoubleMills(1-this.currentPlayer);
+        // difference between number of open mills
+        var criteria8 = this.NumberOfOpenMills(this.currentPlayer) - this.NumberOfOpenMills(1-this.currentPlayer);
         // winning configurations
         var winner = this.GetWinner();
-        var criteria8 = (winner == -1) ? 0 : (winner == this.currentPlayer ? 1 : -1);
+        var criteria9 = (winner == -1) ? 0 : (winner == this.currentPlayer ? 1 : -1);
 
         var rating = 0;
         if (this.gamePhase == 1 || (this.gamePhase == 3 && this.gameTurn < 18)) {
             // while placing stones
             rating = 100 * criteria1 + 26 * criteria2 + 30 * criteria3 + 9 * criteria4 + 10 * criteria5 + 7 * criteria6;
-        } else if (this.stones.some(a => a.filter(b => b).length <= 3)) {
-            // one player has only 3 stones left
-            rating = 500 * criteria1 + 10 * criteria5 + 1 * criteria6 + 500000 * criteria8;
         } else if (this.gamePhase == 2 || (this.gamePhase == 3 && this.gameTurn >= 18)) {
             // stones are moving
-            rating = 500 * criteria1 + 43 * criteria2 + 30 * criteria3 + 11 * criteria4 + 8 * criteria7 + 500000 * criteria8;
+            rating = 500 * criteria1 + 43 * criteria2 + 30 * criteria3 + 11 * criteria4 + 1000 * criteria7 + 500*criteria8 + 500000 * criteria9;
+        }
+         if (this.gameTurn >= 18 && this.stones.some(a => a.filter(b => b).length <= 3)) {
+            // one player has only 3 stones left
+            rating += 100 * criteria5 + 500 * criteria6;
         }
         // switch sign depending on the player
         rating *= color == this.currentPlayer ? 1 : -1;
@@ -585,6 +588,49 @@ class GameNode {
         return count;
     }
     /**
+     * Returns the number of open mills that may be closed within one move
+     * and that cannot be prohibited by a neighbor enemy stone.
+     * @param {number} player The player for which to count the open mills.
+     * @returns {number} the number of open mills.
+     */
+    NumberOfOpenMills(player : number) : number {
+        var count = 0;
+        for (var fieldNum = 0; fieldNum < 24; fieldNum++) {
+            // if stone on field move on
+            if (this.stones[0][fieldNum] || this.stones[1][fieldNum]) continue;
+            // set stone on field temporarily
+            this.stones[player][fieldNum] = true;
+            // check if this caused a mill and then look if there are neighbors that could actually do that
+            if (this.CheckMillHorizontal(fieldNum)) {
+                // first check if there are enemy stones:
+                if ((GameNode.neighborTop[fieldNum] == -1 || !this.stones[1-player][GameNode.neighborTop[fieldNum]])
+                    && (GameNode.neighborBottom[fieldNum] == -1 || !this.stones[1-player][GameNode.neighborBottom[fieldNum]])) {
+                    // no enemy stones that can prohibit the open mill from closing
+                    // so check if we have a stone to close it
+                    if (GameNode.neighborTop[fieldNum] != -1 && this.stones[player][GameNode.neighborTop[fieldNum]])
+                        count++;
+                    else if (GameNode.neighborBottom[fieldNum] != -1 && this.stones[player][GameNode.neighborBottom[fieldNum]])
+                        count++;
+                }
+            }
+            if (this.CheckMillVertical(fieldNum)) {
+                // first check if there are enemy stones:
+                if ((GameNode.neighborLeft[fieldNum] == -1 || !this.stones[1-player][GameNode.neighborLeft[fieldNum]])
+                    && (GameNode.neighborRight[fieldNum] == -1 || !this.stones[1-player][GameNode.neighborRight[fieldNum]])) {
+                    // no enemy stones that can prohibit the open mill from closing
+                    // so check if we have a stone to close it
+                    if (GameNode.neighborLeft[fieldNum] != -1 && this.stones[player][GameNode.neighborLeft[fieldNum]])
+                        count++;
+                    else if (GameNode.neighborRight[fieldNum] != -1 && this.stones[player][GameNode.neighborRight[fieldNum]])
+                        count++;
+                }
+            }
+            // remove stone again
+            this.stones[player][fieldNum] = false;
+        }
+        return count;
+    }
+    /**
      * Gets the number of double mills a particular player has.
      * A double mill in this definition are two closed mills sharing a stone.
      * @param {number} player The player of which to count the double mills.
@@ -595,6 +641,28 @@ class GameNode {
         return this.stones[player]
             .filter((b, fieldNum) => b && this.CheckMillHorizontal(fieldNum) && this.CheckMillVertical(fieldNum))
             .length;
+    }
+    /**
+     * Returns the number of open double mills that may be switched within one move.
+     * @param {number} player The player for which to count the open double mills.
+     * @returns {number} the number of open double mills.
+     */
+    NumberOfOpenDoubleMills(player : number) : number {
+        var count = 0;
+        for (var fieldNum = 0; fieldNum < 24; fieldNum++) {
+            // if stone on field move on
+            if (this.stones[0][fieldNum] || this.stones[1][fieldNum]) continue;
+            // set stone on field temporarily
+            this.stones[player][fieldNum] = true;
+            // check if this caused one or two mills to be created
+            const mill = this.CheckMill(fieldNum);
+            // remove stone again
+            this.stones[player][fieldNum] = false;
+            // now in difference to a two stone configuration check if neighbor stones exist to close it
+            if (mill && GameNode.GetNeighbors(fieldNum).some(neighbor => this.stones[player][neighbor] && this.CheckMill(neighbor)))
+                count++;
+        }
+        return count;
     }
     /**
      * Gets the number of blocked stones a particular player has.
