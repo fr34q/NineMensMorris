@@ -5,6 +5,9 @@
     box-shadow: 20px 10px 10px rgba(0,0,0,0.8);
 }
 */
+#background1 {
+    opacity: 0 !important;
+}
 
 #gameBoard {
     background: url(../pictures/wood.jpg);

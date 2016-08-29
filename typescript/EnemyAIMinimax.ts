@@ -376,7 +376,7 @@ class GameNode {
             rating = 100 * criteria1 + 26 * criteria2 + 30 * criteria3 + 9 * criteria4 + 10 * criteria5 + 7 * criteria6;
         } else if (this.stones.some(a => a.filter(b => b).length <= 3)) {
             // one player has only 3 stones left
-            rating = 300 * criteria1 + 10 * criteria5 + 1 * criteria6 + 500000 * criteria8;
+            rating = 500 * criteria1 + 10 * criteria5 + 1 * criteria6 + 500000 * criteria8;
         } else if (this.gamePhase == 2 || (this.gamePhase == 3 && this.gameTurn >= 18)) {
             // stones are moving
             rating = 500 * criteria1 + 43 * criteria2 + 30 * criteria3 + 11 * criteria4 + 8 * criteria7 + 500000 * criteria8;

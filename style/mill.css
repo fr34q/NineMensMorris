@@ -34,13 +34,13 @@ body {
 }
 */
 #background1 {
-    background: url(../pictures/background.jpg);
+    background: url(../pictures/background-nature.jpg);
     opacity: 1;
     z-index:-1;
     transition: opacity 1.5s;
 }
 #background2 {
-    background: url(../pictures/background-nature.jpg);
+    background: url(../pictures/background.jpg);
     z-index:-2;
 }
 #background1, #background2 {

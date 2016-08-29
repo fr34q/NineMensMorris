@@ -39,9 +39,9 @@ class Menu {
     static ReadSettings() : void {
         // get input elements from the menu
         let checkboxStatMode : HTMLInputElement = document.getElementById('statMode') as HTMLInputElement;
-        let checkboxNatureDesign : HTMLInputElement = document.getElementById('natureDesign') as HTMLInputElement;
+        let checkboxClassicDesign : HTMLInputElement = document.getElementById('classicDesign') as HTMLInputElement;
 
-        if (!checkboxStatMode || !checkboxNatureDesign) {
+        if (!checkboxStatMode || !checkboxClassicDesign) {
             console.error("Could not find all menu elements!");
             return;
         }
@@ -56,8 +56,9 @@ class Menu {
                 "Game will automatically restart and results are logged and displayed in the footer. " +
                 "Stat Mode can be interrupted by going to the menu.");
         }
-
-        Game.natureDesign = checkboxNatureDesign.checked;
+        console.log(Game.natureDesign);
+        Game.natureDesign = !checkboxClassicDesign.checked;
+        console.log(Game.natureDesign);
         this.UpdateNatureDesign();
     }
 

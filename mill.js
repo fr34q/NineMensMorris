@@ -358,7 +358,7 @@ var GameNode = (function () {
         }
         else if (this.stones.some(function (a) { return a.filter(function (b) { return b; }).length <= 3; })) {
             // one player has only 3 stones left
-            rating = 300 * criteria1 + 10 * criteria5 + 1 * criteria6 + 500000 * criteria8;
+            rating = 500 * criteria1 + 10 * criteria5 + 1 * criteria6 + 500000 * criteria8;
         }
         else if (this.gamePhase == 2 || (this.gamePhase == 3 && this.gameTurn >= 18)) {
             // stones are moving
@@ -1295,7 +1295,7 @@ var Game = (function () {
     /** Turns statistics mode on or off */
     Game.statMode = false;
     /** Telling if game is in nature design or not */
-    Game.natureDesign = false;
+    Game.natureDesign = true;
     Game.countWin = [0, 0];
     Game.countDraw = 0;
     return Game;
@@ -1993,8 +1993,8 @@ var Menu = (function () {
     Menu.ReadSettings = function () {
         // get input elements from the menu
         var checkboxStatMode = document.getElementById('statMode');
-        var checkboxNatureDesign = document.getElementById('natureDesign');
-        if (!checkboxStatMode || !checkboxNatureDesign) {
+        var checkboxClassicDesign = document.getElementById('classicDesign');
+        if (!checkboxStatMode || !checkboxClassicDesign) {
             console.error("Could not find all menu elements!");
             return;
         }
@@ -2006,7 +2006,9 @@ var Menu = (function () {
                 "Game will automatically restart and results are logged and displayed in the footer. " +
                 "Stat Mode can be interrupted by going to the menu.");
         }
-        Game.natureDesign = checkboxNatureDesign.checked;
+        console.log(Game.natureDesign);
+        Game.natureDesign = !checkboxClassicDesign.checked;
+        console.log(Game.natureDesign);
         this.UpdateNatureDesign();
     };
     /**

@@ -20,7 +20,7 @@ class Game {
     /** Turns statistics mode on or off */
     static statMode : boolean = false;
     /** Telling if game is in nature design or not */
-    static natureDesign : boolean = false;
+    static natureDesign : boolean = true;
 
     /**
      * Reset and start new game.
