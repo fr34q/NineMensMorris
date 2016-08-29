@@ -3,6 +3,7 @@
  * - Langfristig Canvas durch reine HTML Objekte ersetzen -> Alle Anzeigeeigenschaften in CSS, hover etc
  * - Regeln in eigene Klasse ausgliedern -> besserer Überblick / Struktur
  * - FieldPosition und RealPosition interfaces erstellen, die Position2 ersetzen und eindeutiger zuweisbar sind.
+ * - Gemeinsame Css Datei für Dinge die gleich bleiben
  */
 
 

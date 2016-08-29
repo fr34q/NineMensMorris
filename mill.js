@@ -1294,6 +1294,8 @@ var Game = (function () {
     Game.aiDecisionTime = 500; // ms
     /** Turns statistics mode on or off */
     Game.statMode = false;
+    /** Telling if game is in nature design or not */
+    Game.natureDesign = false;
     Game.countWin = [0, 0];
     Game.countDraw = 0;
     return Game;
@@ -1751,7 +1753,8 @@ var GameStone = (function () {
             this._element.classList.add("stoneMoveFast");
         }
         // set random offset so all stones look different
-        this._element.style.backgroundPosition = Math.floor(Math.random() * 201) + 'px, ' + Math.floor(Math.random() * 201) + 'px';
+        if (!Game.natureDesign)
+            this._element.style.backgroundPosition = Math.floor(Math.random() * 201) + 'px, ' + Math.floor(Math.random() * 201) + 'px';
         gameBoard.appendChild(this._element);
         this._element.onclick = function () { return _this.OnClicked(); }; // lambda expression to avoid complications with 'this'
     }
@@ -1990,7 +1993,8 @@ var Menu = (function () {
     Menu.ReadSettings = function () {
         // get input elements from the menu
         var checkboxStatMode = document.getElementById('statMode');
-        if (!checkboxStatMode) {
+        var checkboxNatureDesign = document.getElementById('natureDesign');
+        if (!checkboxStatMode || !checkboxNatureDesign) {
             console.error("Could not find all menu elements!");
             return;
         }
@@ -2002,6 +2006,8 @@ var Menu = (function () {
                 "Game will automatically restart and results are logged and displayed in the footer. " +
                 "Stat Mode can be interrupted by going to the menu.");
         }
+        Game.natureDesign = checkboxNatureDesign.checked;
+        this.UpdateNatureDesign();
     };
     /**
      * Called by AI select dropdown, sets the AI for a specified color.
@@ -2066,6 +2072,30 @@ var Menu = (function () {
         document.getElementById('infoOverlay')
             .style.display = 'none';
     };
+    /**
+     * Updates the nature design if active.
+     */
+    Menu.UpdateNatureDesign = function () {
+        if (Game.natureDesign) {
+            // nature design turned on
+            this.ChangeCSS("style/nature.css", 0);
+        }
+        else {
+            // turned off
+            this.ChangeCSS("style/normal.css", 0);
+        }
+    };
+    /**
+     * Changes a CSS style sheet on the fly.
+     */
+    Menu.ChangeCSS = function (cssFile, cssLinkIndex) {
+        var oldlink = document.getElementsByTagName("link").item(cssLinkIndex);
+        var newlink = document.createElement("link");
+        newlink.setAttribute("rel", "stylesheet");
+        newlink.setAttribute("type", "text/css");
+        newlink.setAttribute("href", cssFile);
+        document.getElementsByTagName("head").item(0).replaceChild(newlink, oldlink);
+    };
     /** If stat mode was never enabled before. For displaying infoOverlay. */
     Menu.statModeFirstEnabled = true;
     return Menu;
@@ -2075,6 +2105,7 @@ var Menu = (function () {
  * - Langfristig Canvas durch reine HTML Objekte ersetzen -> Alle Anzeigeeigenschaften in CSS, hover etc
  * - Regeln in eigene Klasse ausgliedern -> besserer Überblick / Struktur
  * - FieldPosition und RealPosition interfaces erstellen, die Position2 ersetzen und eindeutiger zuweisbar sind.
+ * - Gemeinsame Css Datei für Dinge die gleich bleiben
  */
 // Declare variables to globally access gameBoard and gameMenu
 var gameMenu;

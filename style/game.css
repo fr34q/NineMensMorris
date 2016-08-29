@@ -1,10 +1,7 @@
 #gameBoard {
     border: 0.441vmin solid black;
-    background: url(../pictures/wood.jpg);
-    background-size: cover;
     display: none;
     border-radius: 4.412vmin;
-    box-shadow: 2.353vmin 1.471vmin 1.471vmin rgba(0,0,0,0.8);
 
     position: absolute;
     top: 50%;
@@ -21,7 +18,6 @@
 
 .fieldLineHorizontal {
     height: 0.6vmin;
-    background-color: black;
     margin: -0.3vmin 0 0 0;
     padding:0;
     position: absolute;
@@ -31,7 +27,6 @@
 }
 .fieldLineVertical {
     width: 0.6vmin;
-    background-color: black;
     margin: 0 0 0 -0.3vmin;
     padding:0;
     position: absolute;
@@ -59,44 +54,20 @@
     width: 2vmin;
     left: 3.5vmin;
     top: 3.5vmin;
-    background-color: black;
     border-radius: 50%;
     border: none;
-    
-}
-.fieldMoveable:after {
-    background-color: #00aa00;
-}
-.fieldMoveable:hover:after {
-    background-color: #44ff00;
 }
 
 .stoneWhite,
 .stoneBlack {
-    /* background-position needs to be set randomly between 0 and 8vmin */
-    margin: -4.3vmin 0 0 -4.3vmin;
     padding: 0;
-    width: 8vmin;
-    height: 8vmin;
     border-radius: 50%;
-    background-repeat: repeat;
     z-index: 3;
 
     position: absolute;
     left: 50%;
     top: 50%;
     transition: transform 0.4s ease-out, z-index 0.4s step-end;
-
-    box-shadow: 0.8vmin 0.4vmin 0.4vmin rgba(0,0,0,0.8);
-
-}
-.stoneWhite {
-    background: url(../pictures/white.jpg);
-    border: 0.3vmin solid black;
-}
-.stoneBlack {
-    background: url(../pictures/black.jpg);
-    border: 0.3vmin solid white;
 }
 .stoneMoveFast {
     transition: transform 0.2s, z-index 0.2s step-end;
@@ -104,53 +75,6 @@
 .stoneMoveInstant {
     transition: transform 0s, z-index 0s;
 }
-.stoneMoveable {
-    /*border: 0.6vmin solid #00ff00;
-    margin: -4.6vmin 0 0 -4.6vmin;*/
-    border-color: #00ff00;
-    box-shadow: 0.8vmin 0.4vmin 0.4vmin rgba(0,0,0,0.8),
-                inset 0 0 0 1000px rgba(0,255,0,0.1);
-}
-.stoneMoveable.stoneHoverable:hover {
-    margin: -4.6vmin 0 0 -4.6vmin;
-    border: 0.6vmin solid #ff7700;
-    
-    box-shadow: 0.8vmin 0.4vmin 0.4vmin rgba(0,0,0,0.8),
-                inset 0 0 0 0 white;
-}
-/* Its specified later so will override possible moveable */
-.stoneActive {
-    border: 0.6vmin solid #ff7700;
-    margin: -4.6vmin 0 0 -4.6vmin;
-
-    box-shadow: 0.8vmin 0.4vmin 0.4vmin rgba(0,0,0,0.8),
-                inset 0 0 0 1000px rgba(255,120,0,0.3);
-    z-index: 4;
-}
-.stoneActive:hover {
-    margin: -4.6vmin 0 0 -4.6vmin;
-    border: 0.6vmin solid #ff7700;
-    
-    box-shadow: 0.8vmin 0.4vmin 0.4vmin rgba(0,0,0,0.8),
-                inset 0 0 0 1000px rgba(255,120,0,0.3);
-}
-.stoneRemoveable {
-    /*
-    border: 0.6vmin solid #ff0000;
-    margin: -4.6vmin 0 0 -4.6vmin;
-    */
-    border-color: #ff0000;
-    box-shadow: 0.8vmin 0.4vmin 0.4vmin rgba(0,0,0,0.5),
-                inset 0 0 0 1000px rgba(255,0,0,0.3);
-}
-.stoneRemoveable.stoneHoverable:hover {
-    margin: -4.6vmin 0 0 -4.6vmin;
-    border: 0.6vmin solid #ff7777;
-    
-    box-shadow: 0.8vmin 0.4vmin 0.4vmin rgba(0,0,0,0.8),
-                inset 0 0 0 1000px rgba(255,120,120,0.5);
-}
-
 
 #winnerScreen {
     width: 90vmin;

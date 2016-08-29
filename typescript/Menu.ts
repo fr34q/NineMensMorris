@@ -38,9 +38,10 @@ class Menu {
      */
     static ReadSettings() : void {
         // get input elements from the menu
-        var checkboxStatMode = <HTMLInputElement> document.getElementById('statMode');
-        
-        if (!checkboxStatMode) {
+        let checkboxStatMode : HTMLInputElement = document.getElementById('statMode') as HTMLInputElement;
+        let checkboxNatureDesign : HTMLInputElement = document.getElementById('natureDesign') as HTMLInputElement;
+
+        if (!checkboxStatMode || !checkboxNatureDesign) {
             console.error("Could not find all menu elements!");
             return;
         }
@@ -55,6 +56,9 @@ class Menu {
                 "Game will automatically restart and results are logged and displayed in the footer. " +
                 "Stat Mode can be interrupted by going to the menu.");
         }
+
+        Game.natureDesign = checkboxNatureDesign.checked;
+        this.UpdateNatureDesign();
     }
 
     /**
@@ -122,4 +126,32 @@ class Menu {
         (document.getElementById('infoOverlay') as HTMLDivElement)
             .style.display = 'none';
     }
+
+    /**
+     * Updates the nature design if active.
+     */
+    static UpdateNatureDesign() : void {
+        if (Game.natureDesign) {
+            // nature design turned on
+            this.ChangeCSS("style/nature.css",0);
+        } else {
+            // turned off
+            this.ChangeCSS("style/normal.css",0);
+        }
+    }
+
+    /**
+     * Changes a CSS style sheet on the fly.
+     */
+    static ChangeCSS(cssFile, cssLinkIndex) {
+        let oldlink : HTMLLinkElement = document.getElementsByTagName("link").item(cssLinkIndex);
+
+        let newlink : HTMLLinkElement = document.createElement("link");
+        newlink.setAttribute("rel", "stylesheet");
+        newlink.setAttribute("type", "text/css");
+        newlink.setAttribute("href", cssFile);
+
+        document.getElementsByTagName("head").item(0).replaceChild(newlink, oldlink);
+    }
+
 }

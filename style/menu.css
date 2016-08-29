@@ -1,6 +1,4 @@
 #gameMenu {
-    background: url(../pictures/wood.jpg);
-    background-size: cover;
     width: 90vmin;
     height: 76vmin;
     padding: 0;
@@ -10,17 +8,27 @@
     border-radius: 4.412vmin;
     /*position: relative;*/
     box-shadow: 20px 10px 10px rgba(0,0,0,0.8);
-
+    background-color: none;
+    transition: background 1s;
     position: absolute;
     top: 50%;
     left: 50%;
     margin: -38vmin 0 0 -45vmin;
-    /*
-    width: 80vw;
-    height: 56vw;
-    max-width: 100vh;
-    max-height: 80vh;
-    */
+}
+#gameMenu:after {
+    content: "";
+    background: url(../pictures/wood.jpg);
+    background-size: cover;
+    border-radius: 4vmin;
+    opacity: 1;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    margin: 0;
+    z-index: -1;
+    transition: opacity 1s;
 }
 
 #gameMenu table {

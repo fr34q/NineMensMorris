@@ -4,10 +4,25 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="initial-scale=1"/>
   <title>Nine Men's Morris (by fr34q)</title>
+  <link type="text/css" rel="stylesheet" href="style/normal.css" />
   <link type="text/css" rel="stylesheet" href="style/mill.css" />
   <link type="text/css" rel="stylesheet" href="style/menu.css" />
   <link type="text/css" rel="stylesheet" href="style/game.css" />
   <script src="mill.js"></script>
+  <!-- preload images of stones so it will not flicker at first display -->
+  <link rel="preload" as="image" href="pictures/background-nature.jpg">
+  <link rel="preload" as="image" href="pictures/white-nature.png">
+  <link rel="preload" as="image" href="pictures/white-moveable-nature.png">
+  <link rel="preload" as="image" href="pictures/white-moveable-hover-nature.png">
+  <link rel="preload" as="image" href="pictures/white-active-nature.png">
+  <link rel="preload" as="image" href="pictures/white-removeable-nature.png">
+  <link rel="preload" as="image" href="pictures/white-removeable-hover-nature.png">
+  <link rel="preload" as="image" href="pictures/black-nature.png">
+  <link rel="preload" as="image" href="pictures/black-moveable-nature.png">
+  <link rel="preload" as="image" href="pictures/black-moveable-hover-nature.png">
+  <link rel="preload" as="image" href="pictures/black-active-nature.png">
+  <link rel="preload" as="image" href="pictures/black-removeable-nature.png">
+  <link rel="preload" as="image" href="pictures/black-removeable-hover-nature.png">
 </head>
 <body onload="onLoad();">
 <header>
@@ -15,6 +30,9 @@
     <td><button onclick="Menu.ReturnToMenu();">To Menu</button></td>
     </tr></table>
 </header>
+
+<div id="background1"></div>
+<div id="background2"></div>
 
 <div id="gameMenu" width="500" height="400">
     <table>
@@ -49,11 +67,17 @@
                 </div>
             </div>
         </td></tr>
-        <tr><td colspan="2">
+        <tr><td colspan="2" style="text-align:left;">
             <label class="switch" tabindex="0">
                 <input type="checkbox" id="statMode" onchange="Menu.ReadSettings();">
                 <div class="slider"></div>
             </label> Stat Mode
+        </td></tr>
+        <tr><td colspan="2" style="text-align:left;">
+            <label class="switch" tabindex="0">
+                <input type="checkbox" id="natureDesign" onchange="Menu.ReadSettings();">
+                <div class="slider"></div>
+            </label> Nature Design
         </td></tr>
     </table>
     <div id="infoOverlay" onclick="Menu.HideInfoOverlay();"><div>

@@ -19,7 +19,9 @@ class Game {
     static aiDecisionTime : number = 500; // ms
     /** Turns statistics mode on or off */
     static statMode : boolean = false;
-    
+    /** Telling if game is in nature design or not */
+    static natureDesign : boolean = false;
+
     /**
      * Reset and start new game.
      */
