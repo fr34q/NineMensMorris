@@ -3,7 +3,7 @@
  */
 class GameStone
 {
-    private _color : number; // black: 0, white: 1
+    private _color : StoneColor;
     private _position : FieldPosition = null;
     private _element : HTMLDivElement;
     private _active : boolean = false;
@@ -14,7 +14,7 @@ class GameStone
     /**
      * color of the stone (readonly)
      */
-    get color() : number { 
+    get color() : StoneColor { 
         return this._color;
     }
 

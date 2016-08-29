@@ -4,33 +4,34 @@
 interface GameMove {
     /** Phase where the move can be performed. */
     phase: number;
-    /** From which field a stone is moved or -1 if stone is placed. */
+    /** From which field a stone is moved or null if stone is placed. */
     from: number; 
-    /** To which field a stone is moved or -1 if stone is removed. */
+    /** To which field a stone is moved or null if stone is removed. */
     to: number
 }
-
+enum StoneColor { Black, White }
 
 /**
  * Class for storing game information for the alpha beta algorithm.
  */
 class GameNode {
-    /** The left neighbor for each field or -1 if none. */
-    static neighborLeft : number[] = [-1,0,1,-1,3,4,-1,6,7,-1,9,10,-1,12,13,-1,15,16,-1,18,19,-1,21,22];
-    /** The right neighbor for each field or -1 if none. */
-    static neighborRight : number[] = [1,2,-1,4,5,-1,7,8,-1,10,11,-1,13,14,-1,16,17,-1,19,20,-1,22,23,-1];
-    /** The top neighbor for each field or -1 if none. */
-    static neighborTop : number[] = [-1,-1,-1,-1,1,-1,-1,4,-1,0,3,6,8,5,2,11,-1,12,10,16,13,9,19,14];
-    /** The bottom neighbor for each field or -1 if none. */
-    static neighborBottom : number[] = [9,4,14,10,7,13,11,-1,12,21,18,15,17,20,23,-1,19,-1,-1,22,-1,-1,-1,-1];
+    /** The left neighbor for each field or null if none. */
+    static neighborLeft : number[] = [null,0,1,null,3,4,null,6,7,null,9,10,null,12,13,null,15,16,null,18,19,null,21,22];
+    /** The right neighbor for each field or null if none. */
+    static neighborRight : number[] = [1,2,null,4,5,null,7,8,null,10,11,null,13,14,null,16,17,null,19,20,null,22,23,null];
+    /** The top neighbor for each field or null if none. */
+    static neighborTop : number[] = [null,null,null,null,1,null,null,4,null,0,3,6,8,5,2,11,null,12,10,16,13,9,19,14];
+    /** The bottom neighbor for each field or null if none. */
+    static neighborBottom : number[] = [9,4,14,10,7,13,11,null,12,21,18,15,17,20,23,null,19,null,null,22,null,null,null,null];
 
     /** Tells if a stone of a certain color sits on a specific field, e.g. stones[color][field] */
-    stones : Array<boolean[]>;
+    stones : [boolean[], boolean[]];
     /** The current player */
-    currentPlayer : number;
+    currentPlayer : StoneColor;
     /** The current number of game turns */
     gameTurn : number;
     /** The current game phase */
+    //TODO: this shouldn't be a number, use enums
     gamePhase : number;
 
     /**
@@ -77,27 +78,30 @@ class GameNode {
      * @returns {Array<number>} all neighbors of the given field.
      */
     static GetNeighbors(fieldnum : number) : Array<number> {
-        var arr = new Array<number>();
-        if(GameNode.neighborLeft[fieldnum] != -1) arr.push(GameNode.neighborLeft[fieldnum]);
-        if(GameNode.neighborRight[fieldnum] != -1) arr.push(GameNode.neighborRight[fieldnum]);
-        if(GameNode.neighborTop[fieldnum] != -1) arr.push(GameNode.neighborTop[fieldnum]);
-        if(GameNode.neighborBottom[fieldnum] != -1) arr.push(GameNode.neighborBottom[fieldnum]);
-        return arr;
+        // less copy paste code, less probability of copying mistakes
+        return [
+            GameNode.neighborLeft[fieldnum],
+            GameNode.neighborRight[fieldnum],
+            GameNode.neighborTop[fieldnum],
+            GameNode.neighborBottom[fieldnum]
+        ].filter(num => num !== null);
     }
 
+    FieldIsOccupied(fieldNum: number) {
+        return this.stones[StoneColor.White][fieldNum] || this.stones[StoneColor.Black][fieldNum];
+    }
     /**
      * Get list of all possible moves at the current game state.
      * @returns {Array<GameMove>} all possible moves.
      */
     GetPossibleMoves() : Array<GameMove> {
         var arr = new Array<GameMove>();
-        if (this.GetWinner() != -1) return arr; // game ended -> no more moves
+        if (this.GetWinner() != null) return arr; // game ended -> no more moves
         switch (this.gamePhase) {
-            case 1: // placing stones
-                for (var fieldNum = 0; fieldNum < 24; fieldNum++) {
-                    // check if field has already stone on it
-                    if(this.stones[0][fieldNum] || this.stones[1][fieldNum]) continue;
-                    arr.push({phase: this.gamePhase, from: -1, to: fieldNum });
+            case 1: // placing stones TODO: ← this kind of comment shouldn't be needed
+                for (var fieldNum = 0; fieldNum < 24; fieldNum++) { //TODO: ← 24 == magic constant. define it somewhere
+                    if(this.FieldIsOccupied(fieldNum)) continue;
+                    arr.push({phase: this.gamePhase, from: null, to: fieldNum });
                 }
                 break;
             case 2: // moving stones
@@ -108,13 +112,13 @@ class GameNode {
                     if(this.stones[this.currentPlayer].filter(b => b).length <= 3) {
                         for (var fieldNumTo = 0; fieldNumTo < 24; fieldNumTo++) {
                             // sort out all fields with stones on them
-                            if(this.stones[0][fieldNumTo] || this.stones[1][fieldNumTo]) continue;
+                            if(this.FieldIsOccupied(fieldNumTo)) continue;
                             arr.push({phase: this.gamePhase, from: fieldNum, to: fieldNumTo});
                         }
                     } else {
                         // more than 3 stones so only take free neighbors into account
                         for (var neighbor of GameNode.GetNeighbors(fieldNum)) {
-                            if(this.stones[0][neighbor] || this.stones[1][neighbor]) continue;
+                            if(this.FieldIsOccupied(neighbor)) continue;
                             arr.push({phase: this.gamePhase, from: fieldNum, to: neighbor});
                         }
                     }
@@ -126,7 +130,7 @@ class GameNode {
                     if(!this.stones[1-this.currentPlayer][fieldNum]) continue;
                     // cannot delete stone in mill
                     if(this.CheckMill(fieldNum)) continue; 
-                    arr.push({phase: this.gamePhase, from: fieldNum, to: -1});
+                    arr.push({phase: this.gamePhase, from: fieldNum, to: null});
                 }
                 break;
         }
@@ -143,14 +147,14 @@ class GameNode {
             console.error("[AI] move not fitting to current game phase.")
             return false;
         }
-        if(this.GetWinner() != -1) {
+        if(this.GetWinner() != null) {
             console.error("[AI] game already ended so no more moves possible.");
             return false;
         }
         switch(this.gamePhase) {
             case 1: // placing stones
                 // check if move has right format and field where to go is empty
-                if (move.from != -1 || move.to == -1 || this.stones[0][move.to] || this.stones[1][move.to]) {
+                if (move.from != null || move.to == null || this.stones[0][move.to] || this.stones[1][move.to]) {
                     console.error("[AI] game move has wrong values");
                     return false;
                 }
@@ -159,7 +163,7 @@ class GameNode {
                 break;
             case 2: // moving stones
                 // check format and if there is a stone that can be moved onto an empty field
-                if (move.from == -1 || move.to == -1 || this.stones[0][move.to] || this.stones[1][move.to]
+                if (move.from == null || move.to == null || this.stones[0][move.to] || this.stones[1][move.to]
                         || !this.stones[this.currentPlayer][move.from]) {
                     console.error("[AI] game move has wrong values");
                     return false;
@@ -170,7 +174,7 @@ class GameNode {
                 break;
             case 3: // removing stones
                 // check format and if there is an enemy stone that is not in a mill and can be removed
-                if (move.from == -1 || move.to != -1 || !this.stones[1-this.currentPlayer][move.from] || this.CheckMill(move.from)) {
+                if (move.from == null || move.to != null || !this.stones[1-this.currentPlayer][move.from] || this.CheckMill(move.from)) {
                     console.error("[AI] game move has wrong values");
                     return false;
                 }
@@ -178,7 +182,7 @@ class GameNode {
                 this.IncrementAndUpdate(move.from);
                 break;
             default:
-                console.error("[AI] Move in game phase "+move.phase+" could not be performed.")
+                console.error(`[AI] Move in game phase ${move.phase} could not be performed.`);
                 return false;
         }
         return true;
@@ -198,7 +202,7 @@ class GameNode {
         switch(move.phase) { 
             case 1: // placing stones
                 // check format and if there is a stone that can be unplaced
-                if(move.from != -1 || move.to == -1 || !this.stones[lastPlayer][move.to]) {
+                if(move.from != null || move.to == null || !this.stones[lastPlayer][move.to]) {
                     console.error("[AI] Move cannot be undone, wrong format. (1)");
                     return false;
                 }
@@ -206,7 +210,7 @@ class GameNode {
                 break;
             case 2: // moving stones
                 // check format and if stone can moved back 
-                if(move.from == -1 || move.to == -1 || !this.stones[lastPlayer][move.to]
+                if(move.from == null || move.to == null || !this.stones[lastPlayer][move.to]
                         || this.stones[0][move.from] || this.stones[1][move.from]) {
                     console.error("[AI] Move cannot be undone, wrong format. (2)");
                     return false;
@@ -216,7 +220,7 @@ class GameNode {
                 break;
             case 3: // removing stones
                 // check format and if there is no stone were it was removed
-                if(move.from == -1 || move.to != -1 || this.stones[0][move.from] || this.stones[1][move.from]) {
+                if(move.from == null || move.to != null || this.stones[0][move.from] || this.stones[1][move.from]) {
                     console.error("[AI] Move cannot be undone, wrong format. (3)");
                     return false;
                 }
@@ -266,16 +270,16 @@ class GameNode {
         if(this.stones[0][field]) color = 0;
         else if(this.stones[1][field]) color = 1
         else return false; // no stone on field
-
-        if(GameNode.neighborLeft[field] != -1 && GameNode.neighborRight[field] != -1)
+        // TODO: Maybe think of better mill detection?
+        if(GameNode.neighborLeft[field] != null && GameNode.neighborRight[field] != null)
             // OXO <- field in center
             return this.stones[color][GameNode.neighborLeft[field]] && 
                     this.stones[color][GameNode.neighborRight[field]];
-        if(GameNode.neighborLeft[field] != -1 && GameNode.neighborLeft[GameNode.neighborLeft[field]] != -1)
+        if(GameNode.neighborLeft[field] != null && GameNode.neighborLeft[GameNode.neighborLeft[field]] != null)
             // OOX <- field on right
             return this.stones[color][GameNode.neighborLeft[field]] && 
                     this.stones[color][GameNode.neighborLeft[GameNode.neighborLeft[field]]];
-        if(GameNode.neighborRight[field] != -1 && GameNode.neighborRight[GameNode.neighborRight[field]] != -1)
+        if(GameNode.neighborRight[field] != null && GameNode.neighborRight[GameNode.neighborRight[field]] != null)
             // XOO <- field on left
             return this.stones[color][GameNode.neighborRight[field]] && 
                     this.stones[color][GameNode.neighborRight[GameNode.neighborRight[field]]];
@@ -292,15 +296,15 @@ class GameNode {
         else if(this.stones[1][field]) color = 1
         else return false; // no stone on field
 
-        if(GameNode.neighborTop[field] != -1 && GameNode.neighborBottom[field] != -1)
+        if(GameNode.neighborTop[field] != null && GameNode.neighborBottom[field] != null)
             // OXO <- field in middle
             return this.stones[color][GameNode.neighborTop[field]] && 
                     this.stones[color][GameNode.neighborBottom[field]];
-        if(GameNode.neighborTop[field] != -1 && GameNode.neighborTop[GameNode.neighborTop[field]] != -1)
+        if(GameNode.neighborTop[field] != null && GameNode.neighborTop[GameNode.neighborTop[field]] != null)
             // OOX <- field on bottom
             return this.stones[color][GameNode.neighborTop[field]] && 
                     this.stones[color][GameNode.neighborTop[GameNode.neighborTop[field]]];
-        if(GameNode.neighborBottom[field] != -1 && GameNode.neighborBottom[GameNode.neighborBottom[field]] != -1)
+        if(GameNode.neighborBottom[field] != null && GameNode.neighborBottom[GameNode.neighborBottom[field]] != null)
             // XOO <- field on top
             return this.stones[color][GameNode.neighborBottom[field]] && 
                     this.stones[color][GameNode.neighborBottom[GameNode.neighborBottom[field]]];
@@ -317,7 +321,7 @@ class GameNode {
 
     /**
      * Gets the winner of the current game if any.
-     * @returns {number} The winner or -1 if none. 
+     * @returns {number} The winner or null if none. 
      */
     GetWinner() : number {
         // check if mill was closed and enemy has only 3 stones left
@@ -326,20 +330,20 @@ class GameNode {
          
         if(this.gamePhase == 2) {
             if (this.stones[this.currentPlayer].filter(b => b).length <= 3)
-                return -1; // player can jump
+                return null; // player can jump
             // check if there are moveable stones left
             for (var fieldNum = 0; fieldNum < 24; fieldNum++) {
                 // only look at fields where the current player has a stone
                 if (!this.stones[this.currentPlayer][fieldNum]) continue;
                 // check if some neighbor field are unoccupied
                 if (GameNode.GetNeighbors(fieldNum).some(n => !this.stones[0][n] && !this.stones[1][n]))
-                    return -1; // move possible
+                    return null; // move possible
             }
             // if we have not returned yet no possible move was found
             // -> the other player wins
             return 1-this.currentPlayer;
         }
-        return -1;
+        return null;
     }
     /**
      * Get the rating of the current game state.
@@ -364,22 +368,25 @@ class GameNode {
         var criteria5 = this.NumberOfTwoPieceConfs(this.currentPlayer) - this.NumberOfTwoPieceConfs(1-this.currentPlayer);
         // difference between number of 3-piece configurations
         var criteria6 = this.NumberOfThreePieceConfs(this.currentPlayer) - this.NumberOfThreePieceConfs(1-this.currentPlayer);
-        // difference between number of double mills
-        var criteria7 = this.NumberOfDoubleMills(this.currentPlayer) - this.NumberOfDoubleMills(1-this.currentPlayer);
+        // difference between number of open double mills
+        var criteria7 = this.NumberOfOpenDoubleMills(this.currentPlayer) - this.NumberOfOpenDoubleMills(1-this.currentPlayer);
+        // difference between number of open mills
+        var criteria8 = this.NumberOfOpenMills(this.currentPlayer) - this.NumberOfOpenMills(1-this.currentPlayer);
         // winning configurations
         var winner = this.GetWinner();
-        var criteria8 = (winner == -1) ? 0 : (winner == this.currentPlayer ? 1 : -1);
+        var criteria9 = (winner == -1) ? 0 : (winner == this.currentPlayer ? 1 : -1);
 
         var rating = 0;
         if (this.gamePhase == 1 || (this.gamePhase == 3 && this.gameTurn < 18)) {
             // while placing stones
             rating = 100 * criteria1 + 26 * criteria2 + 30 * criteria3 + 9 * criteria4 + 10 * criteria5 + 7 * criteria6;
-        } else if (this.stones.some(a => a.filter(b => b).length <= 3)) {
-            // one player has only 3 stones left
-            rating = 500 * criteria1 + 10 * criteria5 + 1 * criteria6 + 500000 * criteria8;
         } else if (this.gamePhase == 2 || (this.gamePhase == 3 && this.gameTurn >= 18)) {
             // stones are moving
-            rating = 500 * criteria1 + 43 * criteria2 + 30 * criteria3 + 11 * criteria4 + 8 * criteria7 + 500000 * criteria8;
+            rating = 500 * criteria1 + 43 * criteria2 + 30 * criteria3 + 11 * criteria4 + 1000 * criteria7 + 500*criteria8 + 500000 * criteria9;
+        }
+         if (this.gameTurn >= 18 && this.stones.some(a => a.filter(b => b).length <= 3)) {
+            // one player has only 3 stones left
+            rating += 100 * criteria5 + 500 * criteria6;
         }
         // switch sign depending on the player
         rating *= color == this.currentPlayer ? 1 : -1;
@@ -396,7 +403,7 @@ class GameNode {
         var count = 0;
         for (var fieldNum = 0; fieldNum < 24; fieldNum++) {
             // if stone on field move on
-            if (this.stones[0][fieldNum] || this.stones[1][fieldNum]) continue;
+            if (this.FieldIsOccupied(fieldNum)) continue;
             // set stone on field temporarily
             this.stones[player][fieldNum] = true;
             // check if this caused one or two mills to be created
@@ -420,24 +427,25 @@ class GameNode {
             if (this.stones[player][fieldNum]) continue;
             this.stones[player][fieldNum] = true;
             if (this.CheckMillHorizontal(fieldNum)) {
+                // TODO: Check if this can be simplified / broken into smaller pieces
                 // check if one of the placedstones can lead to a vertical mill
                 // first get the other stones involved in the horizontal mill
                 var placedStones = new Array<number>(2);
-                if (GameNode.neighborLeft[fieldNum] != -1) {
+                if (GameNode.neighborLeft[fieldNum] != null) {
                     placedStones.push(GameNode.neighborLeft[fieldNum]);
-                    if(GameNode.neighborLeft[GameNode.neighborLeft[fieldNum]] != -1)
+                    if(GameNode.neighborLeft[GameNode.neighborLeft[fieldNum]] != null)
                         placedStones.push(GameNode.neighborLeft[GameNode.neighborLeft[fieldNum]]);
-                    else if(GameNode.neighborRight[fieldNum] != -1)
+                    else if(GameNode.neighborRight[fieldNum] != null)
                         placedStones.push(GameNode.neighborRight[fieldNum]);
-                } else if (GameNode.neighborRight[fieldNum] != -1) {
+                } else if (GameNode.neighborRight[fieldNum] != null) {
                     placedStones.push(GameNode.neighborRight[fieldNum]);
-                    if(GameNode.neighborRight[GameNode.neighborRight[fieldNum]] != -1)
+                    if(GameNode.neighborRight[GameNode.neighborRight[fieldNum]] != null)
                         placedStones.push(GameNode.neighborRight[GameNode.neighborRight[fieldNum]]);
                 }
-                // then check if these may result in a vertical mill (one stone placed, the other field empty)
+                // then check if these may result in a vertical mill (one more stone placed, the remaining field empty)
                 for (var j of placedStones) {
-                    if (GameNode.neighborTop[j] != -1) {
-                        if(GameNode.neighborTop[GameNode.neighborTop[j]] != -1) {
+                    if (GameNode.neighborTop[j] != null) {
+                        if(GameNode.neighborTop[GameNode.neighborTop[j]] != null) {
                             if ((this.stones[player][GameNode.neighborTop[GameNode.neighborTop[j]]] 
                                     && !this.stones[player][GameNode.neighborTop[j]]
                                     && !this.stones[1-player][GameNode.neighborTop[j]]) || 
@@ -447,7 +455,7 @@ class GameNode {
                                 count++;
                                 break;
                             }
-                        } else if(GameNode.neighborBottom[j] != -1) {
+                        } else if(GameNode.neighborBottom[j] != null) {
                             if ((this.stones[player][GameNode.neighborTop[j]] 
                                     && !this.stones[player][GameNode.neighborBottom[j]]
                                     && !this.stones[1-player][GameNode.neighborBottom[j]]) || 
@@ -458,7 +466,7 @@ class GameNode {
                                 break;
                             }
                         }
-                    } else if (GameNode.neighborBottom[j] != -1 && GameNode.neighborBottom[GameNode.neighborBottom[j]] != -1) {
+                    } else if (GameNode.neighborBottom[j] != null && GameNode.neighborBottom[GameNode.neighborBottom[j]] != null) {
                         if ((this.stones[player][GameNode.neighborBottom[GameNode.neighborBottom[j]]] 
                                 && !this.stones[player][GameNode.neighborBottom[j]]
                                 && !this.stones[1-player][GameNode.neighborBottom[j]]) || 
@@ -475,20 +483,20 @@ class GameNode {
             if (this.CheckMillVertical(fieldNum)) {
                 // check if one of the placedstones can lead to a horizontal mill
                 var placedStones = new Array<number>(2);
-                if (GameNode.neighborTop[fieldNum] != -1) {
+                if (GameNode.neighborTop[fieldNum] != null) {
                     placedStones.push(GameNode.neighborTop[fieldNum]);
-                    if(GameNode.neighborTop[GameNode.neighborTop[fieldNum]] != -1)
+                    if(GameNode.neighborTop[GameNode.neighborTop[fieldNum]] != null)
                         placedStones.push(GameNode.neighborTop[GameNode.neighborTop[fieldNum]]);
-                    else if(GameNode.neighborBottom[fieldNum] != -1)
+                    else if(GameNode.neighborBottom[fieldNum] != null)
                         placedStones.push(GameNode.neighborBottom[fieldNum]);
-                } else if (GameNode.neighborBottom[fieldNum] != -1) {
+                } else if (GameNode.neighborBottom[fieldNum] != null) {
                     placedStones.push(GameNode.neighborBottom[fieldNum]);
-                    if(GameNode.neighborBottom[GameNode.neighborBottom[fieldNum]] != -1)
+                    if(GameNode.neighborBottom[GameNode.neighborBottom[fieldNum]] != null)
                         placedStones.push(GameNode.neighborBottom[GameNode.neighborBottom[fieldNum]]);
                 }
                 for (var j of placedStones) {
-                    if (GameNode.neighborLeft[j] != -1) {
-                        if(GameNode.neighborLeft[GameNode.neighborLeft[j]] != -1) {
+                    if (GameNode.neighborLeft[j] != null) {
+                        if(GameNode.neighborLeft[GameNode.neighborLeft[j]] != null) {
                             if ((this.stones[player][GameNode.neighborLeft[GameNode.neighborLeft[j]]] 
                                     && !this.stones[player][GameNode.neighborLeft[j]]
                                     && !this.stones[1-player][GameNode.neighborLeft[j]]) || 
@@ -498,7 +506,7 @@ class GameNode {
                                 count++;
                                 break;
                             }
-                        } else if(GameNode.neighborRight[j] != -1) {
+                        } else if(GameNode.neighborRight[j] != null) {
                             if ((this.stones[player][GameNode.neighborLeft[j]] 
                                     && !this.stones[player][GameNode.neighborRight[j]]
                                     && !this.stones[1-player][GameNode.neighborRight[j]]) || 
@@ -509,7 +517,7 @@ class GameNode {
                                 break;
                             }
                         }
-                    } else if (GameNode.neighborRight[j] != -1 && GameNode.neighborRight[GameNode.neighborRight[j]] != -1) {
+                    } else if (GameNode.neighborRight[j] != null && GameNode.neighborRight[GameNode.neighborRight[j]] != null) {
                         if ((this.stones[player][GameNode.neighborRight[GameNode.neighborRight[j]]] 
                                 && !this.stones[player][GameNode.neighborRight[j]]
                                 && !this.stones[1-player][GameNode.neighborRight[j]]) || 
@@ -549,15 +557,15 @@ class GameNode {
             if (this.CheckMillHorizontal(fieldNum) && !alreadyHorizMill[fieldNum]) {
                 // mark the stones in the horizontal mill
                 alreadyHorizMill[fieldNum] = true;
-                if (GameNode.neighborLeft[fieldNum] != -1) {
+                if (GameNode.neighborLeft[fieldNum] != null) {
                     alreadyHorizMill[GameNode.neighborLeft[fieldNum]] = true; 
-                    if (GameNode.neighborLeft[GameNode.neighborLeft[fieldNum]] != -1) {
+                    if (GameNode.neighborLeft[GameNode.neighborLeft[fieldNum]] != null) {
                         alreadyHorizMill[GameNode.neighborLeft[GameNode.neighborLeft[fieldNum]]] = true; 
                     }
                 }
-                if (GameNode.neighborRight[fieldNum] != -1) {
+                if (GameNode.neighborRight[fieldNum] != null) {
                     alreadyHorizMill[GameNode.neighborRight[fieldNum]] = true; 
-                    if (GameNode.neighborRight[GameNode.neighborRight[fieldNum]] != -1) {
+                    if (GameNode.neighborRight[GameNode.neighborRight[fieldNum]] != null) {
                         alreadyHorizMill[GameNode.neighborRight[GameNode.neighborRight[fieldNum]]] = true; 
                     }
                 }
@@ -567,20 +575,63 @@ class GameNode {
             // check and do the same for vertical mills
             if (this.CheckMillVertical(fieldNum) && !alreadyVertiMill[fieldNum]) {
                 alreadyVertiMill[fieldNum] = true;
-                if (GameNode.neighborTop[fieldNum] != -1) {
+                if (GameNode.neighborTop[fieldNum] != null) {
                     alreadyVertiMill[GameNode.neighborTop[fieldNum]] = true; 
-                    if (GameNode.neighborTop[GameNode.neighborTop[fieldNum]] != -1) {
+                    if (GameNode.neighborTop[GameNode.neighborTop[fieldNum]] != null) {
                         alreadyVertiMill[GameNode.neighborTop[GameNode.neighborTop[fieldNum]]] = true; 
                     }
                 }
-                if (GameNode.neighborBottom[fieldNum] != -1) {
+                if (GameNode.neighborBottom[fieldNum] != null) {
                     alreadyVertiMill[GameNode.neighborBottom[fieldNum]] = true; 
-                    if (GameNode.neighborBottom[GameNode.neighborBottom[fieldNum]] != -1) {
+                    if (GameNode.neighborBottom[GameNode.neighborBottom[fieldNum]] != null) {
                         alreadyVertiMill[GameNode.neighborBottom[GameNode.neighborBottom[fieldNum]]] = true; 
                     }
                 }
                 count++;
             }
+        }
+        return count;
+    }
+    /**
+     * Returns the number of open mills that may be closed within one move
+     * and that cannot be prohibited by a neighbor enemy stone.
+     * @param {number} player The player for which to count the open mills.
+     * @returns {number} the number of open mills.
+     */
+    NumberOfOpenMills(player : number) : number {
+        var count = 0;
+        for (var fieldNum = 0; fieldNum < 24; fieldNum++) {
+            // if stone on field move on
+            if (this.FieldIsOccupied(fieldNum)) continue;
+            // set stone on field temporarily
+            this.stones[player][fieldNum] = true;
+            // check if this caused a mill and then look if there are neighbors that could actually do that
+            if (this.CheckMillHorizontal(fieldNum)) {
+                // first check if there are enemy stones:
+                if ((GameNode.neighborTop[fieldNum] == -1 || !this.stones[1-player][GameNode.neighborTop[fieldNum]])
+                    && (GameNode.neighborBottom[fieldNum] == -1 || !this.stones[1-player][GameNode.neighborBottom[fieldNum]])) {
+                    // no enemy stones that can prohibit the open mill from closing
+                    // so check if we have a stone to close it
+                    if (GameNode.neighborTop[fieldNum] != -1 && this.stones[player][GameNode.neighborTop[fieldNum]])
+                        count++;
+                    else if (GameNode.neighborBottom[fieldNum] != -1 && this.stones[player][GameNode.neighborBottom[fieldNum]])
+                        count++;
+                }
+            }
+            if (this.CheckMillVertical(fieldNum)) {
+                // first check if there are enemy stones:
+                if ((GameNode.neighborLeft[fieldNum] == -1 || !this.stones[1-player][GameNode.neighborLeft[fieldNum]])
+                    && (GameNode.neighborRight[fieldNum] == -1 || !this.stones[1-player][GameNode.neighborRight[fieldNum]])) {
+                    // no enemy stones that can prohibit the open mill from closing
+                    // so check if we have a stone to close it
+                    if (GameNode.neighborLeft[fieldNum] != -1 && this.stones[player][GameNode.neighborLeft[fieldNum]])
+                        count++;
+                    else if (GameNode.neighborRight[fieldNum] != -1 && this.stones[player][GameNode.neighborRight[fieldNum]])
+                        count++;
+                }
+            }
+            // remove stone again
+            this.stones[player][fieldNum] = false;
         }
         return count;
     }
@@ -595,6 +646,28 @@ class GameNode {
         return this.stones[player]
             .filter((b, fieldNum) => b && this.CheckMillHorizontal(fieldNum) && this.CheckMillVertical(fieldNum))
             .length;
+    }
+    /**
+     * Returns the number of open double mills that may be switched within one move.
+     * @param {number} player The player for which to count the open double mills.
+     * @returns {number} the number of open double mills.
+     */
+    NumberOfOpenDoubleMills(player : number) : number {
+        var count = 0;
+        for (var fieldNum = 0; fieldNum < 24; fieldNum++) {
+            // if stone on field move on
+            if (this.FieldIsOccupied(fieldNum)) continue;
+            // set stone on field temporarily
+            this.stones[player][fieldNum] = true;
+            // check if this caused one or two mills to be created
+            const mill = this.CheckMill(fieldNum);
+            // remove stone again
+            this.stones[player][fieldNum] = false;
+            // now in difference to a two stone configuration check if neighbor stones exist to close it
+            if (mill && GameNode.GetNeighbors(fieldNum).some(neighbor => this.stones[player][neighbor] && this.CheckMill(neighbor)))
+                count++;
+        }
+        return count;
     }
     /**
      * Gets the number of blocked stones a particular player has.
@@ -689,19 +762,19 @@ class EnemyAIMinimax implements EnemyAI {
             // for each phase first check format of stored move and if ok call the belonging game board method.
             switch (Game.phase) {
                 case 1: // place stones
-                    if (this.storedMove.from == -1 && this.storedMove.to != -1)
+                    if (this.storedMove.from == null && this.storedMove.to != null)
                         GameBoard.MoveCurrentStoneToField(GameBoard.gameFields[this.storedMove.to]);
                     else
                         console.error("[AI] Stored move is not in the right format.");
                     break;
                 case 2: // move stones
-                    if (this.storedMove.from != -1 && this.storedMove.to != -1 && GameBoard.gameFields[this.storedMove.from].owner)
+                    if (this.storedMove.from != null && this.storedMove.to != null && GameBoard.gameFields[this.storedMove.from].owner)
                         GameBoard.MoveStoneToField(GameBoard.gameFields[this.storedMove.from].owner, GameBoard.gameFields[this.storedMove.to]);
                     else
                         console.error("[AI] Stored move is not in the right format.");
                     break;
                 case 3: // remove stones
-                    if (this.storedMove.to == -1 && this.storedMove.from != -1 && GameBoard.gameFields[this.storedMove.from].owner)
+                    if (this.storedMove.to == null && this.storedMove.from != null && GameBoard.gameFields[this.storedMove.from].owner)
                         GameBoard.RemoveStoneFromField(GameBoard.gameFields[this.storedMove.from].owner);
                     else
                         console.error("[AI] Stored move is not in the right format.");
@@ -749,7 +822,7 @@ class EnemyAIMinimax implements EnemyAI {
         // check if already a winner exists or final depth is reached
         // or time is up and AI respects it -> base case of the recursive call.
         var winner = node.GetWinner();
-        if (winner != -1 || depth <= 0 
+        if (winner != null || depth <= 0 
                 || (this.respectLimit && Date.now()-this.startTime > Game.aiDecisionTime)) {
             // extra punishment if move causes the enemy to win.
             // it is bad to loose, but it is worse if our next move makes enemy win possible...
