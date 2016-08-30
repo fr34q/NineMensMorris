@@ -3,31 +3,32 @@
  */
 class Game {
     /** Curent game phase */
-    static phase : number;
+    static phase : GamePhase;
     /** Game turn (removing stones not counting) */
     static turn : number;
     /** Current player */
-    static currentPlayer : number;
+    static currentPlayer : StoneColor;
     /** 
      * Numbers describing the type of AI for each player.
-     * 0: Human, 1: Random, 2: Easy, 3: Medium, 4: Hard
      */
-    static playerAINumber : number[] = [0,0];
+    static playerAINumber : [GameAI, GameAI] = [null,null];
     /** Set if a player is played by computer */
     static playerAI : Array<EnemyAI> = [null, null];
     /** How long AI will sleep/calculate before deciding its next move */
-    static aiDecisionTime : number = 500; // ms
+    static aiDecisionTime = 500; // ms
     /** Turns statistics mode on or off */
-    static statMode : boolean = false;
+    static statMode = false;
     /** Telling if game is in nature design or not */
-    static natureDesign : boolean = true;
+    static natureDesign = true;
+    /** Activates the debug log, can be set via the browser console. */
+    static debugLog = false;
 
     /**
      * Reset and start new game.
      */
     static Start() : void {
         Game.Reset();
-        Game.phase = 1;
+        Game.phase = GamePhase.PlacingStones;
 
         GameBoard.UpdateProperties();
         GameBoard.TryAIMove();
@@ -39,9 +40,9 @@ class Game {
     static Reset() : void {
         // Create new AI players
         this.InitializeAIs();
-        Game.phase = 0; // menu
+        Game.phase = GamePhase.Menu;
         Game.turn = 0;
-        Game.currentPlayer = 1; // white
+        Game.currentPlayer = StoneColor.White;
         
         GameBoard.Initialize();
     }
@@ -50,7 +51,7 @@ class Game {
      * Triggers the winner screen after a game.
      */
     static ShowWinnerScreen() : void {
-        Game.phase = 4;
+        Game.phase = GamePhase.WinnerScreen;
         GameBoard.UpdateProperties();
         winnerScreenText.innerText = (Game.currentPlayer == 1 ? "White" : "Black") + " wins!";
         winnerScreen.style.display = 'table';
@@ -59,7 +60,7 @@ class Game {
      * Triggers the draw screen after a game.
      */
     static ShowDrawScreen() : void {
-        Game.phase = 5;
+        Game.phase = GamePhase.DrawScreen;
         GameBoard.UpdateProperties();
         winnerScreenText.innerText = "Game is drawn!";
         winnerScreen.style.display = 'table';
@@ -80,18 +81,18 @@ class Game {
      * Checks in Stat Mode if game ended and if so logs it and restarts.
      */
     static AutoPlayStatistics() : void {
-        if (Game.phase == 4 || Game.phase == 5) {
-            if (Game.phase == 4) this.countWin[Game.currentPlayer]++;
+        if (Game.phase == GamePhase.WinnerScreen || Game.phase == GamePhase.DrawScreen) {
+            if (Game.phase == GamePhase.WinnerScreen) this.countWin[Game.currentPlayer]++;
             else this.countDraw++;
-            var infoText = "White: " + this.countWin[1]
-                    + " - Black: " + this.countWin[0] 
-                    + " - Draw: " + this.countDraw
-                    + " (Total: " + (this.countWin[0]+this.countWin[1]+this.countDraw) + ")";
+            const infoText = `White: ${this.countWin[StoneColor.White]}`
+                +` - Black: ${this.countWin[StoneColor.Black]}`
+                +` - Draw: ${this.countDraw}`
+                +` (Total: ${this.countWin[StoneColor.Black]+this.countWin[StoneColor.White]+this.countDraw})`;
             console.info(infoText);
             footer.innerHTML = infoText;
             Game.Start();
             winnerScreen.style.display = 'none';
-        } else if (Game.phase == 0) {
+        } else if (Game.phase == GamePhase.Menu) {
             return; // no new call to function (menu interrupts)
         }
         setTimeout(() => this.AutoPlayStatistics(), 100);
@@ -100,18 +101,18 @@ class Game {
      * Initializes the player AIs according to playerAINumber.
      */
     static InitializeAIs() : void {
-        [0,1].forEach(color => {
+        [StoneColor.Black,StoneColor.White].forEach(color => {
             switch(this.playerAINumber[color]) {
-                case 1: // random
+                case GameAI.Random:
                     Game.playerAI[color] = new EnemyAIRandom(color);
                     break;
-                case 2: // easy
+                case GameAI.Easy:
                     Game.playerAI[color] = new EnemyAIPrimitive(color);
                     break;
-                case 3: // middle
+                case GameAI.Medium:
                     Game.playerAI[color] = new EnemyAIMinimax(color, true);
                     break;
-                case 4: // hard
+                case GameAI.Hard:
                     Game.playerAI[color] = new EnemyAIMinimax(color, false);
                     break;
                 default: // human

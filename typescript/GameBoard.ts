@@ -6,7 +6,7 @@ class GameBoard
     /** Array containing all game fields on the board */
     static gameFields : GameField[];
     /** Array containing all stones existing */
-    static stones : Array<GameStone[]>;
+    static stones : [GameStone[],GameStone[]];
     
     private static _activeStone : GameStone;
     /** specifies the active stone */
@@ -73,14 +73,14 @@ class GameBoard
             // same index means pair -> left and right neighbor (horizontal connections)
             let nachbarL : number[] = [0, 1, 3, 4, 6, 7,  9, 10, 12, 13, 15, 16, 18, 19, 21, 22];
             let nachbarR : number[] = [1, 2, 4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 19, 20, 22, 23];
-            for (var i = 0; i < nachbarL.length; i++) {
+            for (let i = 0; i < nachbarL.length; i++) {
                 GameBoard.gameFields[nachbarL[i]].neighborRight = GameBoard.gameFields[nachbarR[i]];
                 GameBoard.gameFields[nachbarR[i]].neighborLeft = GameBoard.gameFields[nachbarL[i]];
             }
             // same for vertical connections
             let nachbarT : number[] = [0,  9,  3, 10,  6, 11, 1, 4, 16, 19,  8, 12,  5, 13,  2, 14];
             let nachbarB : number[] = [9, 21, 10, 18, 11, 15, 4, 7, 19, 22, 12, 17, 13, 20, 14, 23];
-            for (var i = 0; i < nachbarT.length; i++) {
+            for (let i = 0; i < nachbarT.length; i++) {
                 GameBoard.gameFields[nachbarT[i]].neighborBottom = GameBoard.gameFields[nachbarB[i]];
                 GameBoard.gameFields[nachbarB[i]].neighborTop = GameBoard.gameFields[nachbarT[i]];
             }
@@ -90,9 +90,9 @@ class GameBoard
             this.stones.forEach(arr => arr.forEach(s => s.Remove()));
         // create stones and place them next to the game board
         this.stones = [new Array<GameStone>(9), new Array<GameStone>(9)];
-        for (var color of [0,1]) {
-            for (var i = 0; i < 9; i++) {
-                this.stones[color][i] = new GameStone(color, {x: 7-8*color, y: 6/8*i});
+        for (const color of [StoneColor.Black,StoneColor.White]) {
+            for (let i = 0; i < 9; i++) {
+                this.stones[color][i] = new GameStone(color, {x: 7-8*color, y: 6/8*i} as FieldPosition);
             }
         }
         this.activeStone = this.stones[Game.currentPlayer][8];
@@ -103,11 +103,11 @@ class GameBoard
 
     /** 
      * Returns all stones of a given color that are placed on the field.
-     * @param {number} stonecolor - Color of the placed stones to return.
+     * @param {StoneColor} color - Color of the placed stones to return.
      * @returns {Array<GameStone>} an array with all placed stones of a given color.
      */
-    static GetStonesOnField(stonecolor : number) : Array<GameStone> {
-        return this.stones[stonecolor].filter(s => s.isPlaced);
+    static GetStonesOnField(color : StoneColor) : Array<GameStone> {
+        return this.stones[color].filter(s => s.isPlaced);
     }
 
     /**
@@ -196,7 +196,7 @@ class GameBoard
             // update last turn where mill was closed -> for Remis decision
             this.lastTurnMill = Game.turn;
 
-            if (Game.phase == 2 && this.stones[1 - Game.currentPlayer].length <= 3) {
+            if (Game.phase == GamePhase.MovingStones && this.stones[1 - Game.currentPlayer].length <= 3) {
                 // mill created and enemy has only 3 stones left -> player wins
                 Game.ShowWinnerScreen();
                 return true;
@@ -205,7 +205,7 @@ class GameBoard
             // If not no stone can be removed and next player continues.
             if (this.GetStonesOnField(1 - Game.currentPlayer).some(s => !s.isInClosedMill)) {
                 this.lastGamePhase = Game.phase; // to go back after removal
-                Game.phase = 3; // Remove stone for closed Muehle
+                Game.phase = GamePhase.RemovingStone; // Remove stone for closed Muehle
                 this.activeStone = null;
 
                 // Update stone and field properties
@@ -239,8 +239,8 @@ class GameBoard
             return;
         }
         // Check if phase has to switch from placing to moving stones
-        if (Game.phase == 1 && Game.turn >= 17) {
-            Game.phase = 2;
+        if (Game.phase == GamePhase.PlacingStones && Game.turn >= 17) {
+            Game.phase = GamePhase.MovingStones;
             GameBoard.activeStone = null;
         }
         // Switch players, reset active stone and increment turn counter
@@ -257,11 +257,11 @@ class GameBoard
 
     /**
      * Returns a stone of a given color that is not placed yet.
-     * @param {number} color - Color of the stone to return.
+     * @param {StoneColor} color - Color of the stone to return.
      * @returns {GameStone} the unsettled stone or null of none present.
      */
-    static GetUnsettledStone(color : number) : GameStone {
-        var unsettledStones = this.stones[Game.currentPlayer].filter(s => !s.isPlaced);
+    static GetUnsettledStone(color : StoneColor) : GameStone {
+        const unsettledStones = this.stones[color].filter(s => !s.isPlaced);
         if (unsettledStones.length < 1)
             return null;
         return unsettledStones[unsettledStones.length-1];
@@ -288,7 +288,7 @@ class GameBoard
         }
 
         // update placement datalist
-        var curState = this.CurrentStateToNumber();
+        const curState = this.CurrentStateToNumber();
         // check if this is the third time the same field
         if (!this.hashForDraw[curState]) {
             this.hashForDraw[curState] = 1;

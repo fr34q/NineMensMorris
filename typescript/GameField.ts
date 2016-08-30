@@ -27,7 +27,7 @@ class GameField
     set position(newPos : FieldPosition) {
         this._position = newPos;
         if (this.element) {
-            this.element.style.transform = 'translate('+(newPos.x-3)*10+'vmin, '+(newPos.y-3)*10+'vmin)';
+            this.element.style.transform = `translate(${(newPos.x-3)*10}vmin, ${(newPos.y-3)*10}vmin)`;
         }
     }
 
@@ -95,8 +95,11 @@ class GameField
      * Updates field properties and style converning accessible.
      */
     UpdateProperties() : void {
-        this.accessible = (Game.phase == 1 && !this.owner) || 
-                (Game.phase == 2 && GameBoard.activeStone && this.CanStoneMoveTo(GameBoard.activeStone));
+        // field is accessible if we are placing stones and it has no owner
+        // or if stones are moved and the active stone can move on this field
+        this.accessible = (Game.phase == GamePhase.PlacingStones && !this.owner) || 
+                (Game.phase == GamePhase.MovingStones && GameBoard.activeStone 
+                    && this.CanStoneMoveTo(GameBoard.activeStone));
     }
 
     /**
@@ -108,14 +111,14 @@ class GameField
             return this.owner.OnClicked();
         
         switch (Game.phase) {
-            case 1: // Placing Stones
+            case GamePhase.PlacingStones:
                 if (GameBoard.activeStone && !this.owner)
                     // Active stone can be placed on the field
                     GameBoard.MoveCurrentStoneToField(this);
                 else
                     return false;
                 break;
-            case 2: // Moving Stones
+            case GamePhase.MovingStones:
                 if (GameBoard.activeStone && this.CanStoneMoveTo(GameBoard.activeStone))
                     // Active stone can be moved to the field
                     GameBoard.MoveCurrentStoneToField(this);
@@ -140,7 +143,7 @@ class GameField
             return false;
         
         return !stone.isPlaced
-                || GameBoard.GetStonesOnField(stone.color).length == 3
+                || GameBoard.GetStonesOnField(stone.color).length <= 3
                 || (this.neighborBottom && this.neighborBottom.owner == stone)
                 || (this.neighborLeft && this.neighborLeft.owner == stone)
                 || (this.neighborRight && this.neighborRight.owner == stone)

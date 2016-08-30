@@ -75,6 +75,9 @@
 .stoneMoveInstant {
     transition: transform 0s, z-index 0s;
 }
+.stoneActive {
+    z-index: 4;
+}
 
 #winnerScreen {
     width: 90vmin;

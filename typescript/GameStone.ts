@@ -3,7 +3,7 @@
  */
 class GameStone
 {
-    private _color : number; // black: 0, white: 1
+    private _color : StoneColor;
     private _position : FieldPosition = null;
     private _element : HTMLDivElement;
     private _active : boolean = false;
@@ -14,7 +14,7 @@ class GameStone
     /**
      * color of the stone (readonly)
      */
-    get color() : number { 
+    get color() : StoneColor { 
         return this._color;
     }
 
@@ -27,7 +27,7 @@ class GameStone
     set position(newPos : FieldPosition) {
         this._position = newPos;
         if (this.element) {
-            this.element.style.transform = 'translate('+(newPos.x-3)*10+'vmin, '+(newPos.y-3)*10+'vmin)';
+            this.element.style.transform = `translate(${(newPos.x-3)*10}vmin, ${(newPos.y-3)*10}vmin)`;
         }
     }
 
@@ -114,7 +114,9 @@ class GameStone
      * Returns true if the stone can be moved on the field.
      */
     get isMoveable() : boolean {
-        return GameBoard.stones[this.color].length == 3 || (this.field && (
+        // a stone is moveable if only three stones are left or it is placed
+        // and at least one neighbor is not occupied
+        return GameBoard.stones[this.color].length <= 3 || (this.field && (
                 (this.field.neighborBottom && !this.field.neighborBottom.owner)
                 || (this.field.neighborLeft && !this.field.neighborLeft.owner)
                 || (this.field.neighborRight && !this.field.neighborRight.owner)
@@ -132,24 +134,24 @@ class GameStone
      * If the stone can be clicked
      */
     get canBeClicked() : boolean {
-        return (Game.phase == 2 && Game.currentPlayer == this.color 
+        return (Game.phase == GamePhase.MovingStones && Game.currentPlayer == this.color 
                     && !Game.playerAI[this.color] && this.isMoveable && !this.active)
-                || (Game.phase == 3 && Game.currentPlayer == 1-this.color 
+                || (Game.phase == GamePhase.RemovingStone && Game.currentPlayer == 1-this.color 
                     && !Game.playerAI[1-this.color] && this.isPlaced && !this.isInClosedMill);
     }
 
     /**
      * Creates a stone of the given color.
-     * @param {number} color - Color of the stone (0: black, 1: white).
+     * @param {StoneColor} color - Color of the stone.
      * @constructor
      */
-    constructor (color : number, position : FieldPosition)
+    constructor (color : StoneColor, position : FieldPosition)
     {
         this._color = color;
         
         this._element = document.createElement('div');
         this.position = position; // after creating the div element we can set the position
-        this._element.setAttribute('class', color==1 ? 'stoneWhite' : 'stoneBlack');
+        this._element.setAttribute('class', color == StoneColor.White ? 'stoneWhite' : 'stoneBlack');
         if (Game.aiDecisionTime <= 200) {
             // instant transition moving stones
             this._element.classList.add("stoneMoveInstant");
@@ -159,7 +161,7 @@ class GameStone
             this._element.classList.add("stoneMoveFast");
         }
 
-        // set random offset so all stones look different
+        // set random offset so all stones look different (only for marble background)
         if(!Game.natureDesign)
             this._element.style.backgroundPosition = Math.floor(Math.random()*201) + 'px, ' + Math.floor(Math.random()*201) + 'px';
         gameBoard.appendChild(this._element);
@@ -172,9 +174,9 @@ class GameStone
      */
     UpdateProperties() : void {
         // Mark stones that can be moved
-        this.moveable = Game.phase == 2 && this.color == Game.currentPlayer && this.isMoveable;
+        this.moveable = Game.phase == GamePhase.MovingStones && this.color == Game.currentPlayer && this.isMoveable;
         // Mark stones that can be removed
-        this.removeable = Game.phase == 3 && this.color != Game.currentPlayer && !this.isInClosedMill && this.isPlaced;
+        this.removeable = Game.phase == GamePhase.RemovingStone && this.color != Game.currentPlayer && !this.isInClosedMill && this.isPlaced;
         // Set if the stone can be hovered (so if it may be clicked by player)
         this.hoverable = this.canBeClicked;
     }
@@ -187,11 +189,11 @@ class GameStone
         // if element cannot be clicked return false
         if (!this.canBeClicked) return false;
         
-        if (Game.phase == 2 && Game.currentPlayer == this.color && this.isMoveable) {
+        if (Game.phase == GamePhase.MovingStones && Game.currentPlayer == this.color && this.isMoveable) {
             // Stone can be moved -> activate him
             GameBoard.activeStone = this;
             return true;
-        } else if (Game.phase == 3 && Game.currentPlayer != this.color && !this.isInClosedMill) {
+        } else if (Game.phase == GamePhase.RemovingStone && Game.currentPlayer != this.color && !this.isInClosedMill) {
             // Stone can be removed -> do it
             GameBoard.RemoveStoneFromField(this);
             return true;

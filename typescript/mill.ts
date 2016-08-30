@@ -1,17 +1,18 @@
 /**
- * GLOBAL TODO:
- * - Langfristig Canvas durch reine HTML Objekte ersetzen -> Alle Anzeigeeigenschaften in CSS, hover etc
- * - Regeln in eigene Klasse ausgliedern -> besserer Überblick / Struktur
- * - FieldPosition und RealPosition interfaces erstellen, die Position2 ersetzen und eindeutiger zuweisbar sind.
- * - Gemeinsame Css Datei für Dinge die gleich bleiben
+ * Own primitive datatype for storing positions ((0,0) is top left field).
  */
-
+interface FieldPosition { x: number; y: number; }
 
 /**
- * Own primitive datatype for storing positions.
+ * Enum for the different possible game phases
  */
-interface Position2 { x: number; y: number; }
-interface FieldPosition { x: number; y: number; }
+const enum GamePhase {Menu, PlacingStones, MovingStones, RemovingStone, WinnerScreen, DrawScreen};
+/**
+ * Enum for the two player colors
+ */
+const enum StoneColor {Black, White};
+/** Enum with the different possible AIs */
+enum GameAI {Human, Random, Easy, Medium, Hard};
 
 // Declare variables to globally access gameBoard and gameMenu
 let gameMenu : HTMLDivElement;
@@ -35,8 +36,8 @@ function onLoad() : void {
     // Close the dropdown menu if the user clicks outside of it
     window.onclick = function(event) {
         if (!(<HTMLElement> event.target).matches('.dropbtn')) {
-            var dropdowns = document.getElementsByClassName("dropdown-content");
-            for (var i = 0; i < dropdowns.length; i++)
+            const dropdowns = document.getElementsByClassName("dropdown-content");
+            for (let i = 0; i < dropdowns.length; i++)
                 dropdowns[i].classList.remove('show');
         }
     }

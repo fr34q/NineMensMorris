@@ -3,14 +3,14 @@
  */
 class EnemyAIRandom implements EnemyAI {
     /** Color the AI plays for */
-    color : number;
+    color : StoneColor;
 
     /** 
      * Instantiates a random AI.
      * @param {number} _color The color the AI plays for
      * @constructor
      */
-    constructor(_color : number) {
+    constructor(_color : StoneColor) {
         this.color = _color;
     }
 
@@ -26,7 +26,7 @@ class EnemyAIRandom implements EnemyAI {
         }
 
         // Wait the given time before executing actual move calculation as this is done in no time
-        var result = false;
+        let result = false;
         setTimeout(() => result = this.MakeMoveIntern(), Game.aiDecisionTime);
         return result;
     }
@@ -37,7 +37,7 @@ class EnemyAIRandom implements EnemyAI {
      */
     MakeMoveIntern() : boolean {
         switch (Game.phase) {
-            case 1: // place stones
+            case GamePhase.PlacingStones:
                 // get possible fields where new stone can be placed at
                 var possibleFields = GameBoard.gameFields.filter(f => !f.owner);
                 if (possibleFields.length < 1) {
@@ -48,14 +48,14 @@ class EnemyAIRandom implements EnemyAI {
                 var field = possibleFields[Math.floor(Math.random() * possibleFields.length)];
                 GameBoard.MoveCurrentStoneToField(field);
                 return true;
-            case 2: // move stones
+            case GamePhase.MovingStones:
                 // this should not happen but check if there are stones on the field
                 if (!GameBoard.GetStonesOnField(this.color)) {
                     console.error("[AI] No own stones exist.");
                     return false;
                 }
                 // get moveable stones
-                var moveableStones = GameBoard.GetStonesOnField(this.color).filter(s => s.isMoveable);
+                const moveableStones = GameBoard.GetStonesOnField(this.color).filter(s => s.isMoveable);
                 if (moveableStones.length < 1) {
                     console.error("[AI] No moveable stones available.");
                     return false;
@@ -72,14 +72,14 @@ class EnemyAIRandom implements EnemyAI {
                 // select random field and move stone on it
                 var field = possibleFields[Math.floor(Math.random() * possibleFields.length)];
                 return GameBoard.MoveStoneToField(stone, field);
-            case 3: // remove a stone
+            case GamePhase.RemovingStone:
                 // should not happen but check if enemy has stones
                 if (!GameBoard.GetStonesOnField(1 - this.color)) {
                     console.error("[AI] No enemy stones exist.");
                     return false;
                 }
                 // get all removeable enemy stones
-                var removeableStones = GameBoard.GetStonesOnField(1 - this.color).filter(s => !s.isInClosedMill);
+                const removeableStones = GameBoard.GetStonesOnField(1 - this.color).filter(s => !s.isInClosedMill);
                 if (removeableStones.length < 1) {
                     console.error("[AI] No removeable stones available.");
                     return false;
@@ -89,7 +89,7 @@ class EnemyAIRandom implements EnemyAI {
                 return GameBoard.RemoveStoneFromField(stone);
             default:
                 // normally this should not happen as AI is not called then but if, log it
-                console.error("[AI] No action possible at game phase " + Game.phase + "!");
+                console.error(`[AI] No action possible at game phase ${Game.phase}!`);
                 return false;
         }
     } 

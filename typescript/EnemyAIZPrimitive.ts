@@ -10,13 +10,13 @@ class EnemyAIPrimitive extends EnemyAIRandom {
      */
     MakeMoveIntern() : boolean {
         switch (Game.phase) {
-            case 1: // place stones
-            case 2: // move stones
+            case GamePhase.PlacingStones:
+            case GamePhase.MovingStones:
                 let moveableStones : Array<GameStone>; 
-                if (Game.phase == 1 && (GameBoard.activeStone && GameBoard.activeStone.color == this.color)) {
+                if (Game.phase == GamePhase.PlacingStones && (GameBoard.activeStone && GameBoard.activeStone.color == this.color)) {
                     // placing stones so only moveable stone is the one preselected
                     moveableStones = [GameBoard.activeStone];
-                } else if (Game.phase == 2) {
+                } else if (Game.phase == GamePhase.MovingStones) {
                     // moving stones so get all moveable stones on the field
                     moveableStones = GameBoard.GetStonesOnField(this.color).filter(s => s.isMoveable);
                 } else {
@@ -34,11 +34,11 @@ class EnemyAIPrimitive extends EnemyAIRandom {
                 // Look for the first possibility to close a mill
                 let preferredStone : GameStone = null;
                 let preferredField : GameField = null;
-                for(var stone of moveableStones) {
+                for(const stone of moveableStones) {
                     // for each stone get possible locations to move to
-                    var possibleFields = GameBoard.gameFields.filter(f => f.CanStoneMoveTo(stone));
+                    const possibleFields = GameBoard.gameFields.filter(f => f.CanStoneMoveTo(stone));
                     // check if one of them would mean closing a mill
-                    for (var field of possibleFields) {
+                    for (const field of possibleFields) {
                         if (EnemyAIPrimitive.wouldBeMuehle(field, stone)) {
                             preferredField = field;
                             preferredStone = stone;
@@ -56,13 +56,13 @@ class EnemyAIPrimitive extends EnemyAIRandom {
 
                 // Greedy method to avoid enemy mills
                 // First get all fields where enemy can potentially close a mill within his next move
-                var enemyStones = GameBoard.stones[1-this.color]; // need all stones (not only the placed ones)
-                var badFields = new Array<GameField>();
-                for(var stone of enemyStones) {
+                const enemyStones = GameBoard.stones[1-this.color]; // need all stones (not only the placed ones)
+                const badFields = new Array<GameField>();
+                for(const stone of enemyStones) {
                     // for each enemy stone get the locations it can be moved to
-                    var possibleFields = GameBoard.gameFields.filter(f => f.CanStoneMoveTo(stone));
+                    const possibleFields = GameBoard.gameFields.filter(f => f.CanStoneMoveTo(stone));
                     // check if any field would lead to a closed mill
-                    for (var field of possibleFields) {
+                    for (const field of possibleFields) {
                         if (EnemyAIPrimitive.wouldBeMuehle(field, stone)) {
                             // add it to the list of all badFields
                             badFields.push(field);
@@ -72,8 +72,8 @@ class EnemyAIPrimitive extends EnemyAIRandom {
                 // Check all own moveable stones if one can intervene
                 preferredStone = null;
                 preferredField = null;
-                for (var field of badFields) {
-                    for (var stone of moveableStones) {
+                for (const field of badFields) {
+                    for (const stone of moveableStones) {
                         if (field.CanStoneMoveTo(stone)) {
                             // found a stone that can be moved into an enemy's mill
                             preferredField = field;
@@ -93,8 +93,8 @@ class EnemyAIPrimitive extends EnemyAIRandom {
                 // Try to build 2 stones together to be able to build a mill but
                 // only do this while still placing stones having the full field selection
                 // (while moving stones it would be unlikely enough that a third stone is in range)
-                if(Game.phase == 1) { 
-                    var possibleFields = new Array<GameField>();
+                if(Game.phase == GamePhase.PlacingStones) { 
+                    const possibleFields = new Array<GameField>();
                     // Get all fields who are empty and have one own stone and another free field in its row/column
                     GameBoard.GetStonesOnField(this.color).forEach(stone => {
                         // check for horizontal candidates
@@ -150,12 +150,12 @@ class EnemyAIPrimitive extends EnemyAIRandom {
                     });
                     // if a possible field is found select one randomly and move stone there
                     if (possibleFields.length > 1) {
-                        var field = possibleFields[Math.floor(Math.random()*possibleFields.length)];
+                        const field = possibleFields[Math.floor(Math.random()*possibleFields.length)];
                         return GameBoard.MoveCurrentStoneToField(field);
                     }
                 }
                 break;
-            case 3: // removing stones
+            case GamePhase.RemovingStone:
                 break; // just randomly select one
         }
         // if no preferable moves were found just call the method from the random AI this class extends

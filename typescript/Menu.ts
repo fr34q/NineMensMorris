@@ -3,7 +3,7 @@
  */
 class Menu {
     /** If stat mode was never enabled before. For displaying infoOverlay. */
-    private static statModeFirstEnabled : boolean = true;
+    private static statModeFirstEnabled = true;
 
     /**
      * Start new game and show game canvas.
@@ -38,8 +38,8 @@ class Menu {
      */
     static ReadSettings() : void {
         // get input elements from the menu
-        let checkboxStatMode : HTMLInputElement = document.getElementById('statMode') as HTMLInputElement;
-        let checkboxClassicDesign : HTMLInputElement = document.getElementById('classicDesign') as HTMLInputElement;
+        let checkboxStatMode = document.getElementById('statMode') as HTMLInputElement;
+        let checkboxClassicDesign = document.getElementById('classicDesign') as HTMLInputElement;
 
         if (!checkboxStatMode || !checkboxClassicDesign) {
             console.error("Could not find all menu elements!");
@@ -56,27 +56,28 @@ class Menu {
                 "Game will automatically restart and results are logged and displayed in the footer. " +
                 "Stat Mode can be interrupted by going to the menu.");
         }
-        console.log(Game.natureDesign);
         Game.natureDesign = !checkboxClassicDesign.checked;
-        console.log(Game.natureDesign);
         this.UpdateNatureDesign();
     }
 
     /**
      * Called by AI select dropdown, sets the AI for a specified color.
-     * @param {number} color - The color for which the AI is altered.
-     * @param {number} aiNum - Number describing which AI should be set.
+     * @param {StoneColor} color - The color for which the AI is altered.
+     * @param {GameAI} aiNum - Number describing which AI should be set.
      * @param {HTMLLinkElement} elem - Element that was clicked.
      */
-    static SetPlayerAI(color : number, aiNum : number, elem : HTMLLinkElement) : void {
-        if (color != 0 && color != 1)
-            return; // input invalid
+    static SetPlayerAI(colorNum : number, aiNum : GameAI, elem : HTMLAnchorElement) : void {
+        let color : StoneColor; // StoneColor is const enum so we cannot directly access it in the html
+        if (colorNum == 1) color = StoneColor.White;
+        else if (colorNum == 0) color = StoneColor.Black;
+        else return; // input invalid
+
         switch(aiNum) {
-            case 0: // playerAI
-            case 1: // random
-            case 2: // easy
-            case 3: // middle
-            case 4: // hard
+            case GameAI.Human:
+            case GameAI.Random:
+            case GameAI.Easy:
+            case GameAI.Medium:
+            case GameAI.Hard:
                 break;
             default:
                 return; // not a valid input
@@ -84,8 +85,8 @@ class Menu {
         Game.playerAINumber[color] = aiNum;
         // adjust the button text to fit the new selection
         [
-            <HTMLButtonElement> document.getElementById('blackAI'),
-            <HTMLButtonElement> document.getElementById('whiteAI')
+            document.getElementById('blackAI') as HTMLButtonElement,
+            document.getElementById('whiteAI') as HTMLButtonElement
         ][color].innerHTML = elem.innerHTML;
         
     }
@@ -95,12 +96,12 @@ class Menu {
      * @param {HTMLButtonElement} elem - The element clicked on.
      */
     static ToggleDropdown(elem : HTMLButtonElement) : void {
-        var content = <HTMLDivElement> elem.nextElementSibling;
+        const content = elem.nextElementSibling as HTMLDivElement;
         if(content) {
             content.classList.toggle("show");
             // make all others disappear:
-            var dropdowns = document.getElementsByClassName("dropdown-content");
-            for (var i = 0; i < dropdowns.length; i++) {
+            const dropdowns = document.getElementsByClassName("dropdown-content");
+            for (let i = 0; i < dropdowns.length; i++) {
                 if(dropdowns[i] != content) {
                     dropdowns[i].classList.remove('show');
                 }
@@ -144,15 +145,14 @@ class Menu {
     /**
      * Changes a CSS style sheet on the fly.
      */
-    static ChangeCSS(cssFile, cssLinkIndex) {
-        let oldlink : HTMLLinkElement = document.getElementsByTagName("link").item(cssLinkIndex);
+    static ChangeCSS(cssFile : string, cssLinkIndex : number) {
+        const oldlink = document.getElementsByTagName("link").item(cssLinkIndex) as HTMLLinkElement;
+        const newlink = document.createElement("link") as HTMLLinkElement;
 
-        let newlink : HTMLLinkElement = document.createElement("link");
         newlink.setAttribute("rel", "stylesheet");
         newlink.setAttribute("type", "text/css");
         newlink.setAttribute("href", cssFile);
 
         document.getElementsByTagName("head").item(0).replaceChild(newlink, oldlink);
     }
-
 }
