@@ -11,7 +11,7 @@ class Game {
     /** 
      * Numbers describing the type of AI for each player.
      */
-    static playerAINumber : [GameAI, GameAI] = [null,null];
+    static playerAINumber : [GameAI, GameAI] = [GameAI.Easy,GameAI.Human];
     /** Set if a player is played by computer */
     static playerAI : Array<EnemyAI> = [null, null];
     /** How long AI will sleep/calculate before deciding its next move */
@@ -112,7 +112,7 @@ class Game {
                 case GameAI.Medium:
                     Game.playerAI[color] = new EnemyAIMinimax(color, true);
                     break;
-                case GameAI.Hard:
+                case GameAI.Strong:
                     Game.playerAI[color] = new EnemyAIMinimax(color, false);
                     break;
                 default: // human

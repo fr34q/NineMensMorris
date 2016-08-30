@@ -12,7 +12,7 @@ const enum GamePhase {Menu, PlacingStones, MovingStones, RemovingStone, WinnerSc
  */
 const enum StoneColor {Black, White};
 /** Enum with the different possible AIs */
-enum GameAI {Human, Random, Easy, Medium, Hard};
+enum GameAI {Human, Random, Easy, Medium, Strong};
 
 // Declare variables to globally access gameBoard and gameMenu
 let gameMenu : HTMLDivElement;
@@ -41,4 +41,10 @@ function onLoad() : void {
                 dropdowns[i].classList.remove('show');
         }
     }
+
+    Menu.ShowInfoOverlay(
+        "In the menu you can set who will play for the white and the black stones. "
+        +"'Human' means this color will be played by you or a partner and all other "
+        +"possibilities refer to the strength of a computer enemy.<br>"
+        +"Have fun!", "Welcome!");
 }

@@ -3,6 +3,48 @@ var __extends = (this && this.__extends) || function (d, b) {
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
+;
+;
+/** Enum with the different possible AIs */
+var GameAI;
+(function (GameAI) {
+    GameAI[GameAI["Human"] = 0] = "Human";
+    GameAI[GameAI["Random"] = 1] = "Random";
+    GameAI[GameAI["Easy"] = 2] = "Easy";
+    GameAI[GameAI["Medium"] = 3] = "Medium";
+    GameAI[GameAI["Strong"] = 4] = "Strong";
+})(GameAI || (GameAI = {}));
+;
+// Declare variables to globally access gameBoard and gameMenu
+var gameMenu;
+var gameBoard;
+var winnerScreen;
+var winnerScreenText;
+var footer;
+/**
+ * This function is called when page finished loading.
+ */
+function onLoad() {
+    gameMenu = document.getElementById("gameMenu");
+    gameBoard = document.getElementById("gameBoard");
+    winnerScreen = document.getElementById("winnerScreen");
+    winnerScreenText = document.getElementById("winnerScreenText");
+    footer = document.getElementsByTagName('footer')[0].getElementsByTagName('p')[0];
+    Game.Reset();
+    // Needed for menu:
+    // Close the dropdown menu if the user clicks outside of it
+    window.onclick = function (event) {
+        if (!event.target.matches('.dropbtn')) {
+            var dropdowns = document.getElementsByClassName("dropdown-content");
+            for (var i = 0; i < dropdowns.length; i++)
+                dropdowns[i].classList.remove('show');
+        }
+    };
+    Menu.ShowInfoOverlay("In the menu you can set who will play for the white and the black stones. "
+        + "'Human' means this color will be played by you or a partner and all other "
+        + "possibilities refer to the strength of a computer enemy.<br>"
+        + "Have fun!", "Welcome!");
+}
 /**
  * Class for storing game information for the alpha beta algorithm.
  */
@@ -1359,7 +1401,7 @@ var Game = (function () {
                 case GameAI.Medium:
                     Game.playerAI[color] = new EnemyAIMinimax(color, true);
                     break;
-                case GameAI.Hard:
+                case GameAI.Strong:
                     Game.playerAI[color] = new EnemyAIMinimax(color, false);
                     break;
                 default:
@@ -1371,7 +1413,7 @@ var Game = (function () {
     /**
      * Numbers describing the type of AI for each player.
      */
-    Game.playerAINumber = [null, null];
+    Game.playerAINumber = [GameAI.Easy, GameAI.Human];
     /** Set if a player is played by computer */
     Game.playerAI = [null, null];
     /** How long AI will sleep/calculate before deciding its next move */
@@ -2095,7 +2137,7 @@ var Menu = (function () {
             this.statModeFirstEnabled = false;
             Menu.ShowInfoOverlay("Statistics Mode is for long term probing of game results between two AI players. " +
                 "Game will automatically restart and results are logged and displayed in the footer. " +
-                "Stat Mode can be interrupted by going to the menu.");
+                "Stat Mode can be terminated by going to the menu.");
         }
         Game.natureDesign = !checkboxClassicDesign.checked;
         this.UpdateNatureDesign();
@@ -2119,7 +2161,7 @@ var Menu = (function () {
             case GameAI.Random:
             case GameAI.Easy:
             case GameAI.Medium:
-            case GameAI.Hard:
+            case GameAI.Strong:
                 break;
             default:
                 return; // not a valid input
@@ -2155,10 +2197,12 @@ var Menu = (function () {
      * Shows an information overlay with given text.
      * @param {string} text - The text to print on the screen.
      */
-    Menu.ShowInfoOverlay = function (text) {
+    Menu.ShowInfoOverlay = function (text, title) {
         var disp = document.getElementById('infoOverlay');
         disp.getElementsByTagName('p')[0]
             .innerHTML = text;
+        disp.getElementsByTagName('span')[0]
+            .innerHTML = (title != null) ? title : "Information";
         disp.style.display = 'table';
     };
     /**
@@ -2196,42 +2240,4 @@ var Menu = (function () {
     Menu.statModeFirstEnabled = true;
     return Menu;
 }());
-;
-;
-/** Enum with the different possible AIs */
-var GameAI;
-(function (GameAI) {
-    GameAI[GameAI["Human"] = 0] = "Human";
-    GameAI[GameAI["Random"] = 1] = "Random";
-    GameAI[GameAI["Easy"] = 2] = "Easy";
-    GameAI[GameAI["Medium"] = 3] = "Medium";
-    GameAI[GameAI["Hard"] = 4] = "Hard";
-})(GameAI || (GameAI = {}));
-;
-// Declare variables to globally access gameBoard and gameMenu
-var gameMenu;
-var gameBoard;
-var winnerScreen;
-var winnerScreenText;
-var footer;
-/**
- * This function is called when page finished loading.
- */
-function onLoad() {
-    gameMenu = document.getElementById("gameMenu");
-    gameBoard = document.getElementById("gameBoard");
-    winnerScreen = document.getElementById("winnerScreen");
-    winnerScreenText = document.getElementById("winnerScreenText");
-    footer = document.getElementsByTagName('footer')[0].getElementsByTagName('p')[0];
-    Game.Reset();
-    // Needed for menu:
-    // Close the dropdown menu if the user clicks outside of it
-    window.onclick = function (event) {
-        if (!event.target.matches('.dropbtn')) {
-            var dropdowns = document.getElementsByClassName("dropdown-content");
-            for (var i = 0; i < dropdowns.length; i++)
-                dropdowns[i].classList.remove('show');
-        }
-    };
-}
 //# sourceMappingURL=mill.js.map

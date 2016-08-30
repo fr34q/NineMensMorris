@@ -54,7 +54,7 @@ class Menu {
             Menu.ShowInfoOverlay(
                 "Statistics Mode is for long term probing of game results between two AI players. " + 
                 "Game will automatically restart and results are logged and displayed in the footer. " +
-                "Stat Mode can be interrupted by going to the menu.");
+                "Stat Mode can be terminated by going to the menu.");
         }
         Game.natureDesign = !checkboxClassicDesign.checked;
         this.UpdateNatureDesign();
@@ -77,7 +77,7 @@ class Menu {
             case GameAI.Random:
             case GameAI.Easy:
             case GameAI.Medium:
-            case GameAI.Hard:
+            case GameAI.Strong:
                 break;
             default:
                 return; // not a valid input
@@ -115,10 +115,12 @@ class Menu {
      * Shows an information overlay with given text.
      * @param {string} text - The text to print on the screen.
      */
-    static ShowInfoOverlay(text : string) : void {
+    static ShowInfoOverlay(text : string, title? : string) : void {
         let disp = document.getElementById('infoOverlay') as HTMLDivElement;
         (disp.getElementsByTagName('p')[0] as HTMLParagraphElement)
             .innerHTML = text;
+        (disp.getElementsByTagName('span')[0] as HTMLSpanElement)
+            .innerHTML = (title != null) ? title : "Information";
         disp.style.display = 'table';
     }
     /**
